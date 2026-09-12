@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>DDAシミュレーター ビジュアライザー v2</title>
+<style>
+  :root{
+    --bg:#0b0d12; --panel:#12151c; --panel2:#171b24; --border:#232838;
+    --text:#e8eaf0; --text-dim:#8b93a7; --text-faint:#565e73;
+    --accent-fixed:#4a90d9; --accent-rule:#f5a623; --accent-ml:#4cd9a0;
+    --accent-player:#ff5d8f; --accent-radial:#4fd1ff; --accent-fan:#ffb84f; --accent-spiral:#c792ff;
+    --danger:#ff4d4f; --ok:#4cd9a0;
+    --mono: ui-monospace,'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
+    --sans: -apple-system,BlinkMacSystemFont,'Segoe UI',Hiragino Sans,'Hiragino Kaku Gothic ProN',Meiryo,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:24px; min-height:100vh;
+    background: radial-gradient(circle at 15% 0%, #161a26 0%, transparent 45%),
+      radial-gradient(circle at 85% 100%, #14181f 0%, transparent 45%), var(--bg);
+    color:var(--text); font-family:var(--sans);}
+  .wrap{max-width:1180px; margin:0 auto;}
+  header{margin-bottom:20px;}
+  header h1{font-size:22px; margin:0 0 4px 0; letter-spacing:0.02em; font-weight:700; display:flex; align-items:center; gap:10px;}
+  header h1 .dot{width:9px;height:9px;border-radius:50%;background:var(--accent-player);
+    box-shadow:0 0 10px 2px var(--accent-player); display:inline-block;}
+  header p{margin:0; color:var(--text-dim); font-size:13px; line-height:1.6;}
+  .panel{background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px;}
+  .controls{display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; margin-bottom:18px;}
+  .field-group{display:flex; flex-direction:column; gap:4px;}
+  .field-group label{font-size:11px; color:var(--text-faint); letter-spacing:0.04em;}
+  select, button{font-family:var(--sans); font-size:13px; color:var(--text);
+    background:var(--panel2); border:1px solid var(--border); border-radius:6px; padding:7px 10px; cursor:pointer;}
+  select:hover, button:hover{border-color:#3a4155;}
+  button.primary{background:var(--accent-player); border-color:var(--accent-player); color:#1a0b12; font-weight:700;}
+  button.primary:hover{filter:brightness(1.08);}
+  button:disabled{opacity:0.4; cursor:not-allowed;}
+  .spacer{flex:1 1 auto; min-width:8px;}
+  .speed-group{display:flex; align-items:center; gap:8px;}
+  .speed-group input[type=range]{width:110px;}
+  .main-grid{display:grid; grid-template-columns:1fr 320px; gap:18px;}
+  @media (max-width:880px){ .main-grid{grid-template-columns:1fr;} }
+  #fieldWrap{position:relative;}
+  canvas#field{width:100%; aspect-ratio:1/1; display:block; border-radius:8px;
+    background: repeating-linear-gradient(0deg, rgba(255,255,255,0.035) 0px, rgba(255,255,255,0.035) 1px, transparent 1px, transparent 40px),
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.035) 0px, rgba(255,255,255,0.035) 1px, transparent 1px, transparent 40px), #0d1017;
+    border:1px solid var(--border); transition:box-shadow 0.15s;}
+  #fieldWrap.hitflash canvas#field{box-shadow:0 0 0 3px var(--danger) inset;}
+  .lives-row{display:flex; gap:6px; align-items:center; margin-top:8px;}
+  .heart{width:14px; height:14px; border-radius:3px; background:var(--accent-player); opacity:0.25;}
+  .heart.on{opacity:1;}
+  .info-panel{display:flex; flex-direction:column; gap:12px;}
+  .stat-row{display:flex; justify-content:space-between; align-items:baseline; font-size:12.5px;}
+  .stat-row .k{color:var(--text-dim);} .stat-row .v{font-family:var(--mono); color:var(--text); font-weight:600;}
+  .status-badge{display:inline-block; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:700; letter-spacing:0.03em;}
+  .status-success{background:rgba(76,217,160,0.15); color:var(--ok);}
+  .status-fail{background:rgba(255,77,79,0.15); color:var(--danger);}
+  .status-idle{background:rgba(139,147,167,0.15); color:var(--text-dim);}
+  hr.div{border:none; border-top:1px solid var(--border); margin:2px 0;}
+  .params-table{width:100%; border-collapse:collapse; font-size:12px;}
+  .params-table td{padding:3px 0; color:var(--text-dim);}
+  .params-table td.val{text-align:right; font-family:var(--mono); color:var(--text);}
+  .legend{display:flex; flex-wrap:wrap; gap:10px; font-size:11px; color:var(--text-dim);}
+  .legend span.sw{display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:4px; vertical-align:middle;}
+  .charts{display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:18px;}
+  @media (max-width:880px){ .charts{grid-template-columns:1fr;} }
+  .chart-title{font-size:12px; color:var(--text-dim); margin:0 0 8px 0; display:flex; justify-content:space-between;}
+  canvas.chart{width:100%; height:170px; display:block;}
+  .method-tag{font-size:10.5px; padding:2px 7px; border-radius:5px; font-weight:700; letter-spacing:0.02em;}
+  .tag-fixed{background:rgba(74,144,217,0.18); color:var(--accent-fixed);}
+  .tag-rule_based{background:rgba(245,166,35,0.18); color:var(--accent-rule);}
+  .tag-ml_ridge{background:rgba(76,217,160,0.18); color:var(--accent-ml);}
+  footer{margin-top:22px; font-size:11px; color:var(--text-faint); line-height:1.7;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span class="dot"></span>DDA弾幕シミュレーター v2 — 挙動ビジュアライザー</h1>
+    <p>敵が画面を横切って移動し、プレイヤーはライフ3・入力レート上限・運動反応遅延を持つ「より人間らしい」設定です。敵が画面外に消えるたびに難易度Dが試行内で調整されます。外部通信なし、ブラウザ内で完結します。</p>
+  </header>
+
+  <div class="panel">
+    <div class="controls">
+      <div class="field-group">
+        <label>プレイヤー型</label>
+        <select id="ptypeSel">
+          <option value="beginner">初心者型</option>
+          <option value="intermediate">中級者型</option>
+          <option value="expert">熟練者型</option>
+          <option value="learning">成長型</option>
+          <option value="unstable">不安定型</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label>難易度調整方式</label>
+        <select id="methodSel">
+          <option value="fixed">固定難易度</option>
+          <option value="rule_based">ルールベース</option>
+          <option value="ml_ridge">ML（Ridge回帰）</option>
+        </select>
+      </div>
+      <div class="field-group"><label>&nbsp;</label>
+        <button id="btnPlay" class="primary">▶ 1試行アニメーション再生</button></div>
+      <div class="field-group"><label>&nbsp;</label>
+        <button id="btnFast5">⏩ 高速で5試行進める</button></div>
+      <div class="field-group"><label>&nbsp;</label>
+        <button id="btnReset">↺ リセット</button></div>
+      <div class="spacer"></div>
+      <div class="field-group speed-group">
+        <label>再生速度</label>
+        <input type="range" id="speedRange" min="1" max="6" value="4">
+      </div>
+    </div>
+
+    <div class="main-grid">
+      <div>
+        <div id="fieldWrap">
+          <canvas id="field" width="800" height="800"></canvas>
+        </div>
+        <div class="lives-row">
+          <span style="font-size:11px; color:var(--text-faint);">ライフ:</span>
+          <span class="heart on" id="heart0"></span><span class="heart on" id="heart1"></span><span class="heart on" id="heart2"></span>
+        </div>
+        <div class="legend" style="margin-top:8px;">
+          <span><span class="sw" style="background:var(--accent-player)"></span>プレイヤー</span>
+          <span><span class="sw" style="background:var(--accent-radial)"></span>敵(放射状)</span>
+          <span><span class="sw" style="background:var(--accent-fan)"></span>敵(扇状)</span>
+          <span><span class="sw" style="background:var(--accent-spiral)"></span>敵(螺旋状)</span>
+          <span style="color:var(--text-faint)">細い線=注目中の弾 / 敵は画面外から現れて横切ります</span>
+        </div>
+      </div>
+
+      <div class="info-panel panel" style="background:var(--panel2);">
+        <div>
+          <span id="methodTag" class="method-tag tag-fixed">固定難易度</span>
+          <span id="statusBadge" class="status-badge status-idle" style="float:right;">待機中</span>
+        </div>
+        <hr class="div">
+        <div class="stat-row"><span class="k">経過時間</span><span class="v" id="elapsedTime">–</span></div>
+        <div class="stat-row"><span class="k">難易度 D</span><span class="v" id="dVal">0.500</span></div>
+        <div class="stat-row"><span class="k">チェックポイント回数</span><span class="v" id="ckptCount">0</span></div>
+        <div class="stat-row"><span class="k">直近の生存時間</span><span class="v" id="lastSurvival">–</span></div>
+        <div class="stat-row"><span class="k">平均生存時間(累計)</span><span class="v" id="avgSurvival">–</span></div>
+        <div class="stat-row"><span class="k">ML予測生存時間</span><span class="v" id="pHat">–</span></div>
+        <hr class="div">
+        <table class="params-table">
+          <tr><td>発射間隔</td><td class="val" id="pInterval">–</td></tr>
+          <tr><td>弾速</td><td class="val" id="pSpeed">–</td></tr>
+          <tr><td>1回の弾数</td><td class="val" id="pN">–</td></tr>
+          <tr><td>敵の移動速度</td><td class="val" id="pEnemySpeed">–</td></tr>
+          <tr><td>プレイヤー速度</td><td class="val" id="pPlayerSpeed">–</td></tr>
+        </table>
+        <hr class="div">
+        <div style="font-size:11px; color:var(--text-faint); line-height:1.6;">
+          <b id="ptypeDesc" style="color:var(--text-dim);"></b>
+        </div>
+      </div>
+    </div>
+
+    <div class="charts">
+      <div>
+        <p class="chart-title"><span>難易度 D の推移（チェックポイントごと）</span><span id="dVolLabel" style="color:var(--text-faint)"></span></p>
+        <canvas class="chart" id="chartD" width="600" height="170"></canvas>
+      </div>
+      <div>
+        <p class="chart-title"><span>被弾ごとの生存時間</span><span style="color:var(--text-faint)">目標14秒 = 破線</span></p>
+        <canvas class="chart" id="chartSurvival" width="600" height="170"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    フィールド800×800 / 1試行=最大2700フレーム(90秒@30fps)またはライフ0まで / 敵は画面外から侵入し直線的に横切って再出現します。<br>
+    プレイヤー型・方式の切り替えは現在のセッション（D・履歴・ライフ）をリセットします。
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   0. 乱数
+   ============================================================ */
+function mulberry32(seed){
+  let a = seed >>> 0;
+  return function(){
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+let RNG = mulberry32(Date.now() % 2147483647);
+function rnd(){ return RNG(); }
+function randn(mean, std){
+  let u1 = Math.max(rnd(), 1e-9), u2 = rnd();
+  let z = Math.sqrt(-2*Math.log(u1)) * Math.cos(2*Math.PI*u2);
+  return mean + z*std;
+}
+function clip(x, lo, hi){ return Math.max(lo, Math.min(hi, x)); }
+function hypot(x,y){ return Math.sqrt(x*x+y*y); }
+function mean(arr){ return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0; }
+function randint(a,b){ return a + Math.floor(rnd()*(b-a)); } // [a,b)
+
+/* ============================================================
+   1. 定数
+   ============================================================ */
+const FIELD_SIZE=800.0, FRAMES_PER_TRIAL=2700, DT=1.0/30.0;
+const PLAYER_HIT_RADIUS=5.0;
+const LIVES_START=3, INVINCIBILITY_FRAMES=30;
+const ENEMY_SPAWN_MARGIN=40.0, RESPAWN_DELAY_FRAMES=15;
+const MAX_CHECKPOINT_INTERVAL_FRAMES=150;
+const CHECKPOINT_WINDOW=3, TARGET_SURVIVAL_SECONDS=14.0;
+const PATTERNS=["radial","fan","spiral"];
+const PATTERN_COLOR={radial:"#4fd1ff", fan:"#ffb84f", spiral:"#c792ff"};
+const INPUT_LATENCY_MEAN=0.080, INPUT_LATENCY_STD=0.020;
+
+/* ============================================================
+   2. D→パラメータ
+   ============================================================ */
+function dToParams(D){
+  D = clip(D,0,1);
+  const interval_max=30, interval_min=6;
+  const speed_min=3.0, speed_max=15.0;
+  const n_min=2, n_max=14;
+  const size_min=3.0, size_max=8.0;
+  const pspeed_max=6.0, pspeed_min=2.5;
+  const espeed_min=1.2, espeed_max=4.5;
+  return {
+    fireInterval: Math.max(1, Math.round(interval_max - D*(interval_max-interval_min))),
+    bulletSpeed: speed_min + D*(speed_max-speed_min),
+    bulletsPerShot: Math.max(1, Math.round(n_min + D*(n_max-n_min))),
+    bulletRadius: size_min + D*(size_max-size_min),
+    playerSpeed: pspeed_max - D*(pspeed_max-pspeed_min),
+    enemySpeed: espeed_min + D*(espeed_max-espeed_min),
+  };
+}
+
+/* ============================================================
+   3. 難易度更新（チェックポイント単位）
+   ============================================================ */
+const FIXED_D=0.5;
+function fixedUpdate(D, records){ return FIXED_D; }
+
+const RULE_STEP=0.1, RULE_LOW_FACTOR=0.7, RULE_HIGH_FACTOR=1.3;
+function ruleBasedUpdate(D, records){
+  if(records.length < CHECKPOINT_WINDOW) return D;
+  const recent = records.slice(-CHECKPOINT_WINDOW);
+  const avgStreak = mean(recent.map(r=>r.survivalStreakSeconds));
+  if(avgStreak < TARGET_SURVIVAL_SECONDS*RULE_LOW_FACTOR) D -= RULE_STEP;
+  else if(avgStreak > TARGET_SURVIVAL_SECONDS*RULE_HIGH_FACTOR) D += RULE_STEP;
+  return clip(D,0,1);
+}
+
+// 学習済みRidge回帰パラメータ（実データ約9,700件で学習したものを移植）
+const ML_MEAN=[0.4669412039527521,16.4314458919128,0.11724493744357337,38.04100642336388,468.0979730334539];
+const ML_SCALE=[0.28058711725845786,13.721692138289486,0.18304139237258532,13.988726043997334,120.9814348891463];
+const ML_COEF=[-0.9021744824955189,12.571907529152833,-3.204475515935926,0.14994183053349444,0.04283779412600973];
+const ML_INTERCEPT=17.591835418547603;
+const ML_GAIN=0.25;
+
+function extractFeatures(records, currentD){
+  if(records.length < CHECKPOINT_WINDOW) return [currentD,0,0,0,0];
+  const recent = records.slice(-CHECKPOINT_WINDOW);
+  return [
+    currentD,
+    mean(recent.map(r=>r.survivalStreakSeconds)),
+    mean(recent.map(r=>r.hitOccurred?1:0)),
+    mean(recent.map(r=>r.bulletDensityAvg)),
+    mean(recent.map(r=>r.enemyDistanceAvg)),
+  ];
+}
+function mlPredictStreak(features){
+  let z = ML_INTERCEPT;
+  for(let i=0;i<5;i++){
+    const scaled = (features[i]-ML_MEAN[i])/ML_SCALE[i];
+    z += ML_COEF[i]*scaled;
+  }
+  return z;
+}
+function mlUpdate(D, records){
+  if(records.length < CHECKPOINT_WINDOW) return {D, predicted:null};
+  const feats = extractFeatures(records, D);
+  const predicted = mlPredictStreak(feats);
+  const errorRatio = (predicted - TARGET_SURVIVAL_SECONDS)/TARGET_SURVIVAL_SECONDS;
+  const Dnew = clip(D + ML_GAIN*errorRatio, 0, 1);
+  return {D:Dnew, predicted};
+}
+
+/* ============================================================
+   4. プレイヤー型
+   ============================================================ */
+const PLAYER_DEFS = {
+  beginner:{name:"初心者型", desc:"知覚550ms±120ms・見落とし15%・k=3・入力5Hz。",
+    reactionMean:0.550, reactionStd:0.120, pMiss:0.15, k:3, inputHz:5},
+  intermediate:{name:"中級者型", desc:"知覚350ms±80ms・見落とし5%・k=5・入力8Hz。",
+    reactionMean:0.350, reactionStd:0.080, pMiss:0.05, k:5, inputHz:8},
+  expert:{name:"熟練者型", desc:"知覚200ms±50ms・見落とし2%・k=8・入力12Hz。",
+    reactionMean:0.200, reactionStd:0.050, pMiss:0.02, k:8, inputHz:12},
+  learning:{name:"成長型", desc:"初期は初心者相当。試行を重ねるごとに知覚・見落とし・k・入力レートが指数関数的に改善し、最終的に熟練者に近づく。",
+    reactionMean:0.550, reactionStd:0.120, pMiss:0.15, k:3, inputHz:5, isLearning:true},
+  unstable:{name:"不安定型", desc:"普段は中級者相当。10%の確率で「不調」に陥り、知覚・見落とし・k・入力レートすべてが悪化する。",
+    reactionMean:0.350, reactionStd:0.080, pMiss:0.05, k:5, inputHz:8, isUnstable:true},
+};
+
+function createPlayer(ptype){
+  const def = PLAYER_DEFS[ptype];
+  return {
+    ptype, trialCount:0,
+    reactionMean:def.reactionMean, reactionStd:def.reactionStd, pMiss:def.pMiss, k:def.k, inputHz:def.inputHz,
+    isLearning: !!def.isLearning, isUnstable: !!def.isUnstable,
+    holdDx:0, holdDy:0, holdCounter:0, lastFocus:[],
+  };
+}
+function holdFrames(player){ return Math.max(1, Math.round((1.0/DT)/player.inputHz)); }
+
+function onTrialStart(player){
+  player.trialCount += 1;
+  player.holdDx=0; player.holdDy=0; player.holdCounter=0;
+  const def = PLAYER_DEFS[player.ptype];
+  if(player.isLearning){
+    const n=player.trialCount, tau=200.0, decay=Math.exp(-n/tau);
+    const rInit=0.550,rFinal=0.250, sInit=0.120,sFinal=0.060, pInit=0.15,pFinal=0.03;
+    const kInit=3,kFinal=7, hzInit=5,hzFinal=12;
+    player.reactionMean = rFinal+(rInit-rFinal)*decay;
+    player.reactionStd = sFinal+(sInit-sFinal)*decay;
+    player.pMiss = pFinal+(pInit-pFinal)*decay;
+    player.k = Math.round(kFinal+(kInit-kFinal)*decay);
+    player.inputHz = hzFinal+(hzInit-hzFinal)*decay;
+  } else if(player.isUnstable){
+    const inLapse = rnd() < 0.10;
+    if(inLapse){
+      player.reactionMean = def.reactionMean*1.7;
+      player.reactionStd = def.reactionStd*1.7;
+      player.pMiss = Math.min(0.9, def.pMiss*2.5);
+      player.k = Math.max(1, def.k-2);
+      player.inputHz = Math.max(2, def.inputHz*0.6);
+    } else {
+      player.reactionMean=def.reactionMean; player.reactionStd=def.reactionStd;
+      player.pMiss=def.pMiss; player.k=def.k; player.inputHz=def.inputHz;
+    }
+  }
+}
+
+/* ============================================================
+   5. ゲーム物理
+   ============================================================ */
+function spawnEnemy(enemySpeed){
+  const m=ENEMY_SPAWN_MARGIN, spread=Math.PI/4;
+  const edge = Math.floor(rnd()*4);
+  let x,y,angle;
+  if(edge===0){ x=-m; y=rnd()*FIELD_SIZE; angle = -spread + rnd()*2*spread; }
+  else if(edge===1){ x=FIELD_SIZE+m; y=rnd()*FIELD_SIZE; angle = Math.PI + (-spread+rnd()*2*spread); }
+  else if(edge===2){ x=rnd()*FIELD_SIZE; y=-m; angle = Math.PI/2 + (-spread+rnd()*2*spread); }
+  else { x=rnd()*FIELD_SIZE; y=FIELD_SIZE+m; angle = -Math.PI/2 + (-spread+rnd()*2*spread); }
+  const vx=enemySpeed*Math.cos(angle), vy=enemySpeed*Math.sin(angle);
+  const pattern = PATTERNS[Math.floor(rnd()*3)];
+  return {x,y,vx,vy,pattern, fireTimer:randint(10,30), spiralOffset:0, alive:true, respawnTimer:0};
+}
+function isOutOfFieldEnemy(e){
+  const m=ENEMY_SPAWN_MARGIN;
+  return (e.x<-m||e.x>FIELD_SIZE+m||e.y<-m||e.y>FIELD_SIZE+m);
+}
+function fireBullets(enemy, params, player){
+  const n = params.bulletsPerShot;
+  const bullets=[];
+  if(enemy.pattern==="radial"){
+    for(let i=0;i<n;i++){
+      const a=2*Math.PI*i/n;
+      bullets.push({x:enemy.x,y:enemy.y,vx:params.bulletSpeed*Math.cos(a),vy:params.bulletSpeed*Math.sin(a),r:params.bulletRadius,pat:"radial"});
+    }
+  } else if(enemy.pattern==="fan"){
+    const theta = Math.PI/3 + rnd()*(Math.PI/3);
+    const dx=player.x-enemy.x, dy=player.y-enemy.y;
+    const center=Math.atan2(dy,dx);
+    if(n===1){ bullets.push({x:enemy.x,y:enemy.y,vx:params.bulletSpeed*Math.cos(center),vy:params.bulletSpeed*Math.sin(center),r:params.bulletRadius,pat:"fan"}); }
+    else{
+      for(let i=0;i<n;i++){
+        const a=center-theta/2+theta*i/(n-1);
+        bullets.push({x:enemy.x,y:enemy.y,vx:params.bulletSpeed*Math.cos(a),vy:params.bulletSpeed*Math.sin(a),r:params.bulletRadius,pat:"fan"});
+      }
+    }
+  } else {
+    const delta=Math.PI/7;
+    for(let i=0;i<n;i++){
+      const a=enemy.spiralOffset+2*Math.PI*i/n;
+      bullets.push({x:enemy.x,y:enemy.y,vx:params.bulletSpeed*Math.cos(a),vy:params.bulletSpeed*Math.sin(a),r:params.bulletRadius,pat:"spiral"});
+    }
+    enemy.spiralOffset += delta;
+  }
+  return bullets;
+}
+function computeTTC(bullet, player){
+  const dx=player.x-bullet.x, dy=player.y-bullet.y;
+  const dist=hypot(dx,dy);
+  const speed=hypot(bullet.vx,bullet.vy);
+  if(speed<1e-8) return Infinity;
+  const ux=bullet.vx/speed, uy=bullet.vy/speed;
+  const approach=(dx*ux+dy*uy)/Math.max(dist,1e-8)*speed;
+  if(approach<=0) return Infinity;
+  const hitDist=Math.max(0, dist-player.hitRadius-bullet.r);
+  return hitDist/approach;
+}
+
+function decideDirection(player, game){
+  const p=game.player;
+  let bulletTtc = game.bullets.map(b=>({b, ttc:computeTTC(b,p)}));
+  bulletTtc.sort((a,b)=>a.ttc-b.ttc);
+  let candidates = bulletTtc.slice(0, player.k);
+  for(let i=player.k;i<bulletTtc.length;i++){ if(rnd()>0.9) candidates.push(bulletTtc[i]); }
+  let recognized = candidates.filter(c=>rnd()>player.pMiss);
+
+  let repelX=0, repelY=0;
+  for(const e of game.enemies){
+    if(!e.alive) continue;
+    const dx=p.x-e.x, dy=p.y-e.y;
+    const dist=Math.max(hypot(dx,dy),1.0);
+    const force=50.0/(dist*dist)*p.maxSpeed;
+    repelX+=force*dx/dist; repelY+=force*dy/dist;
+  }
+
+  let evadeX=0, evadeY=0;
+  const perceptionFrames = Math.max(0.05, randn(player.reactionMean, player.reactionStd))/DT;
+  const motorFrames = Math.max(0.02, randn(INPUT_LATENCY_MEAN, INPUT_LATENCY_STD))/DT;
+  const reactionFrames = perceptionFrames + motorFrames;
+  const focusList=[];
+  for(const {b:bullet, ttc} of recognized){
+    if(ttc>150.0) continue;
+    const bspeed=hypot(bullet.vx,bullet.vy);
+    if(bspeed<1e-8) continue;
+    const bux=bullet.vx/bspeed, buy=bullet.vy/bspeed;
+    const dx=p.x-bullet.x, dy=p.y-bullet.y;
+    let perpX=dx-(dx*bux+dy*buy)*bux;
+    let perpY=dy-(dx*bux+dy*buy)*buy;
+    let perpLen=hypot(perpX,perpY);
+    if(perpLen<1e-8){ perpX = rnd()>0.5?-buy:buy; perpY = rnd()>0.5?bux:-bux; perpLen=1.0; }
+    const tMove=5.0/p.maxSpeed, scale=3.0;
+    const urgency=1.0/(1.0+Math.exp((ttc-reactionFrames-tMove)/scale));
+    const weight=urgency*p.maxSpeed*2.0;
+    evadeX += weight*perpX/perpLen; evadeY += weight*perpY/perpLen;
+    if(urgency>0.15) focusList.push(bullet);
+  }
+
+  let totalX=repelX+evadeX, totalY=repelY+evadeY;
+  const margin=50.0, wallForce=p.maxSpeed*0.5;
+  if(p.x<margin) totalX += wallForce*(margin-p.x)/margin;
+  if(p.x>FIELD_SIZE-margin) totalX -= wallForce*(p.x-(FIELD_SIZE-margin))/margin;
+  if(p.y<margin) totalY += wallForce*(margin-p.y)/margin;
+  if(p.y>FIELD_SIZE-margin) totalY -= wallForce*(p.y-(FIELD_SIZE-margin))/margin;
+  return {dx:totalX, dy:totalY, focusList};
+}
+
+function decideAction(player, game){
+  if(player.holdCounter<=0){
+    const {dx,dy,focusList} = decideDirection(player, game);
+    player.holdDx=dx; player.holdDy=dy; player.lastFocus=focusList;
+    player.holdCounter = holdFrames(player);
+  }
+  player.holdCounter -= 1;
+  return {dx:player.holdDx, dy:player.holdDy, focusList:player.lastFocus};
+}
+
+/* ============================================================
+   6. TrialRunner
+   ============================================================ */
+function createGame(initialD, playerModel){
+  const params = dToParams(initialD);
+  const player = {x:FIELD_SIZE/2, y:FIELD_SIZE*0.75, maxSpeed:params.playerSpeed, hitRadius:PLAYER_HIT_RADIUS};
+  const enemies = [spawnEnemy(params.enemySpeed), spawnEnemy(params.enemySpeed)];
+  return {
+    D: initialD, player, enemies, bullets:[],
+    lives: LIVES_START, invincibleTimer:0, frame:0,
+    checkpointRecords:[], hitEvents:[], dHistory:[{frame:0,D:initialD}],
+    _sinceCkptBulletCounts:[], _sinceCkptEnemyDist:[], _sinceCkptHit:false,
+    _framesSinceLastHit:0, _framesSinceCkpt:0,
+  };
+}
+
+function onCheckpoint(game, updateFn){
+  const rec = {
+    frame: game.frame, D: game.D, hitOccurred: game._sinceCkptHit,
+    survivalStreakSeconds: game._framesSinceLastHit*DT,
+    bulletDensityAvg: mean(game._sinceCkptBulletCounts),
+    enemyDistanceAvg: mean(game._sinceCkptEnemyDist),
+  };
+  game.checkpointRecords.push(rec);
+  const result = updateFn(game.D, game.checkpointRecords);
+  game.D = (typeof result === "object") ? result.D : result;
+  game.lastPredicted = (typeof result === "object") ? result.predicted : null;
+  game.dHistory.push({frame:game.frame, D:game.D});
+  game._sinceCkptBulletCounts=[]; game._sinceCkptEnemyDist=[]; game._sinceCkptHit=false; game._framesSinceCkpt=0;
+}
+
+function onHit(game, bullet){
+  game.lives -= 1;
+  game.invincibleTimer = INVINCIBILITY_FRAMES;
+  game._sinceCkptHit = true;
+  const dists = game.enemies.filter(e=>e.alive).map(e=>hypot(game.player.x-e.x, game.player.y-e.y));
+  game.hitEvents.push({
+    frame: game.frame, D: game.D, livesRemaining: game.lives,
+    survivalTimeSeconds: game._framesSinceLastHit*DT,
+    bulletDensityAtHit: mean(game._sinceCkptBulletCounts.slice(-30)),
+    hittingBulletSpeed: hypot(bullet.vx,bullet.vy), hittingBulletPattern: bullet.pat,
+    enemyDistanceAtHit: dists.length?mean(dists):0,
+  });
+  game._framesSinceLastHit = 0;
+}
+
+function stepGame(game, player, updateFn){
+  const params = dToParams(game.D);
+  game.player.maxSpeed = params.playerSpeed;
+
+  const {dx,dy,focusList} = decideAction(player, game);
+  let ddx=dx, ddy=dy;
+  const sp = hypot(ddx,ddy);
+  if(sp > game.player.maxSpeed){ const sc=game.player.maxSpeed/sp; ddx*=sc; ddy*=sc; }
+
+  const p = game.player;
+  p.x = clip(p.x+ddx, p.hitRadius, FIELD_SIZE-p.hitRadius);
+  p.y = clip(p.y+ddy, p.hitRadius, FIELD_SIZE-p.hitRadius);
+
+  for(const b of game.bullets){ b.x+=b.vx; b.y+=b.vy; }
+  game.bullets = game.bullets.filter(b=>{
+    const m=b.r; return !(b.x<-m||b.x>FIELD_SIZE+m||b.y<-m||b.y>FIELD_SIZE+m);
+  });
+
+  for(const e of game.enemies){
+    if(!e.alive){
+      e.respawnTimer -= 1;
+      if(e.respawnTimer<=0){
+        const ne = spawnEnemy(params.enemySpeed);
+        e.x=ne.x; e.y=ne.y; e.vx=ne.vx; e.vy=ne.vy; e.pattern=ne.pattern;
+        e.spiralOffset=0; e.fireTimer=randint(10,30); e.alive=true;
+      }
+      continue;
+    }
+    e.x += e.vx; e.y += e.vy;
+    e.fireTimer -= 1;
+    if(e.fireTimer<=0){ game.bullets.push(...fireBullets(e, params, p)); e.fireTimer = params.fireInterval; }
+    if(isOutOfFieldEnemy(e)){
+      e.alive=false; e.respawnTimer=RESPAWN_DELAY_FRAMES;
+      onCheckpoint(game, updateFn);
+    }
+  }
+
+  let hitBullet = null;
+  if(game.invincibleTimer>0){ game.invincibleTimer -= 1; }
+  else{
+    for(const b of game.bullets){
+      const dxp=p.x-b.x, dyp=p.y-b.y;
+      if(hypot(dxp,dyp) < p.hitRadius+b.r){ hitBullet=b; break; }
+    }
+    if(hitBullet) onHit(game, hitBullet);
+  }
+
+  game._sinceCkptBulletCounts.push(game.bullets.length);
+  const dists = game.enemies.filter(e=>e.alive).map(e=>hypot(p.x-e.x,p.y-e.y));
+  game._sinceCkptEnemyDist.push(dists.length?mean(dists):0);
+  game._framesSinceLastHit += 1;
+  game._framesSinceCkpt += 1;
+  if(game._framesSinceCkpt >= MAX_CHECKPOINT_INTERVAL_FRAMES) onCheckpoint(game, updateFn);
+
+  game.frame += 1;
+  return {focusList, hit: !!hitBullet};
+}
+
+function getUpdateFn(method){
+  if(method==="fixed") return fixedUpdate;
+  if(method==="rule_based") return ruleBasedUpdate;
+  return (D, records)=>{ const r = mlUpdate(D, records); return r; };
+}
+
+function runTrialCompute(ptype, method){
+  const player = createPlayer(ptype);
+  onTrialStart(player);
+  const game = createGame(FIXED_D, player);
+  const updateFn = getUpdateFn(method);
+  while(game.frame < FRAMES_PER_TRIAL && game.lives > 0){
+    stepGame(game, player, updateFn);
+  }
+  return game;
+}
+
+/* ============================================================
+   7. 描画
+   ============================================================ */
+const fieldCanvas=document.getElementById("field");
+const fctx=fieldCanvas.getContext("2d");
+const SCALE=fieldCanvas.width/FIELD_SIZE;
+const fieldWrap=document.getElementById("fieldWrap");
+
+function drawGame(game){
+  fctx.clearRect(0,0,fieldCanvas.width, fieldCanvas.height);
+  for(const e of game.enemies){
+    if(!e.alive) continue;
+    fctx.fillStyle = PATTERN_COLOR[e.pattern];
+    fctx.save(); fctx.translate(e.x*SCALE, e.y*SCALE); fctx.rotate(Math.PI/4);
+    fctx.fillRect(-8,-8,16,16); fctx.restore();
+  }
+  const p = game.player;
+  fctx.strokeStyle="rgba(255,93,143,0.35)"; fctx.lineWidth=1;
+  for(const b of (game._lastFocus||[])){
+    fctx.beginPath(); fctx.moveTo(p.x*SCALE,p.y*SCALE); fctx.lineTo(b.x*SCALE,b.y*SCALE); fctx.stroke();
+  }
+  for(const b of game.bullets){
+    fctx.fillStyle = PATTERN_COLOR[b.pat] || "#fff";
+    fctx.globalAlpha=0.85;
+    fctx.beginPath(); fctx.arc(b.x*SCALE,b.y*SCALE, Math.max(2,b.r*SCALE),0,Math.PI*2); fctx.fill();
+  }
+  fctx.globalAlpha=1;
+  fctx.fillStyle = game.invincibleTimer>0 ? "rgba(255,93,143,0.5)" : "#ff5d8f";
+  fctx.shadowColor="#ff5d8f"; fctx.shadowBlur = game.invincibleTimer>0?4:12;
+  fctx.beginPath(); fctx.arc(p.x*SCALE,p.y*SCALE, Math.max(5,PLAYER_HIT_RADIUS*SCALE),0,Math.PI*2); fctx.fill();
+  fctx.shadowBlur=0;
+}
+function clearField(){ fctx.clearRect(0,0,fieldCanvas.width, fieldCanvas.height); }
+function flashHit(){
+  fieldWrap.classList.add("hitflash");
+  setTimeout(()=>fieldWrap.classList.remove("hitflash"), 180);
+}
+function updateHearts(lives){
+  for(let i=0;i<3;i++) el("heart"+i).classList.toggle("on", i<lives);
+}
+
+/* ============================================================
+   8. チャート
+   ============================================================ */
+function drawLineChart(canvas, series, opts){
+  const ctx=canvas.getContext("2d"); const w=canvas.width,h=canvas.height;
+  ctx.clearRect(0,0,w,h); ctx.fillStyle="#0d1017"; ctx.fillRect(0,0,w,h);
+  const pad={l:34,r:10,t:10,b:18}; const plotW=w-pad.l-pad.r, plotH=h-pad.t-pad.b;
+  const yMin=opts.yMin??0, yMax=opts.yMax??1;
+  ctx.strokeStyle="rgba(255,255,255,0.08)"; ctx.lineWidth=1; ctx.fillStyle="#565e73"; ctx.font="10px monospace";
+  for(let i=0;i<=4;i++){
+    const yy=pad.t+plotH*i/4;
+    ctx.beginPath(); ctx.moveTo(pad.l,yy); ctx.lineTo(w-pad.r,yy); ctx.stroke();
+    ctx.fillText((yMax-(yMax-yMin)*i/4).toFixed(1), 2, yy+3);
+  }
+  if(opts.targetLine!==undefined){
+    const ty=pad.t+plotH*(1-(opts.targetLine-yMin)/(yMax-yMin));
+    ctx.strokeStyle="rgba(255,255,255,0.4)"; ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(pad.l,ty); ctx.lineTo(w-pad.r,ty); ctx.stroke(); ctx.setLineDash([]);
+  }
+  if(series.length<2) return;
+  const n=series.length, xMax=Math.max(n-1,1);
+  if(opts.points){
+    ctx.fillStyle = opts.color||"#4cd9a0";
+    series.forEach((v,i)=>{
+      const xx=pad.l+plotW*(i/xMax), yy=pad.t+plotH*(1-(v-yMin)/(yMax-yMin));
+      ctx.beginPath(); ctx.arc(xx,yy,2.5,0,Math.PI*2); ctx.fill();
+    });
+  } else {
+    ctx.strokeStyle=opts.color||"#4cd9a0"; ctx.lineWidth=1.6; ctx.beginPath();
+    series.forEach((v,i)=>{
+      const xx=pad.l+plotW*(i/xMax), yy=pad.t+plotH*(1-(v-yMin)/(yMax-yMin));
+      if(i===0) ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);
+    });
+    ctx.stroke();
+  }
+}
+
+/* ============================================================
+   9. セッション & UI
+   ============================================================ */
+const el=id=>document.getElementById(id);
+const ptypeSel=el("ptypeSel"), methodSel=el("methodSel");
+const btnPlay=el("btnPlay"), btnFast5=el("btnFast5"), btnReset=el("btnReset");
+const speedRange=el("speedRange");
+
+let session=null;
+function newSession(ptype, method){
+  return { ptype, method, dLog:[], survivalLog:[], trialsRun:0, running:false, lastPredicted:null };
+}
+function methodLabel(m){ return {fixed:"固定難易度", rule_based:"ルールベース", ml_ridge:"ML（Ridge回帰）"}[m]; }
+
+function refreshInfoPanel(game, lastEvent){
+  el("methodTag").className = "method-tag tag-"+session.method;
+  el("methodTag").textContent = methodLabel(session.method);
+  el("dVal").textContent = (game?game.D:0.5).toFixed(3);
+  el("ckptCount").textContent = session.dLog.length;
+  el("ptypeDesc").textContent = PLAYER_DEFS[session.ptype].desc;
+  const avgSurv = session.survivalLog.length ? mean(session.survivalLog) : null;
+  el("avgSurvival").textContent = avgSurv===null ? "–" : avgSurv.toFixed(1)+"秒";
+  el("lastSurvival").textContent = session.survivalLog.length ? session.survivalLog[session.survivalLog.length-1].toFixed(1)+"秒" : "–";
+  el("pHat").textContent = (session.method==="ml_ridge" && session.lastPredicted!==null) ? session.lastPredicted.toFixed(1)+"秒" : "–";
+
+  if(game){
+    const params = dToParams(game.D);
+    el("pInterval").textContent = params.fireInterval+" frame";
+    el("pSpeed").textContent = params.bulletSpeed.toFixed(2);
+    el("pN").textContent = params.bulletsPerShot;
+    el("pEnemySpeed").textContent = params.enemySpeed.toFixed(2);
+    el("pPlayerSpeed").textContent = params.playerSpeed.toFixed(2);
+    updateHearts(game.lives);
+    el("elapsedTime").textContent = (game.frame*DT).toFixed(1)+"s / 90.0s";
+  }
+  if(lastEvent){
+    el("statusBadge").className = "status-badge " + (lastEvent==="alive"?"status-idle":"status-fail");
+    el("statusBadge").textContent = lastEvent==="alive" ? "プレイ中" : "全ライフ消費・試行終了";
+  }
+
+  drawLineChart(el("chartD"), session.dLog, {yMin:0,yMax:1,
+    color: session.method==="fixed"?"#4a90d9":session.method==="rule_based"?"#f5a623":"#4cd9a0"});
+  drawLineChart(el("chartSurvival"), session.survivalLog, {yMin:0,yMax:30, color:"#ff5d8f", targetLine:14, points:true});
+
+  if(session.dLog.length>1){
+    const diffs=[]; for(let i=1;i<session.dLog.length;i++) diffs.push(Math.abs(session.dLog[i]-session.dLog[i-1]));
+    el("dVolLabel").textContent = "平均変化幅 "+mean(diffs).toFixed(3);
+  } else el("dVolLabel").textContent="";
+}
+
+function resetSession(){
+  session = newSession(ptypeSel.value, methodSel.value);
+  clearField(); updateHearts(3);
+  el("elapsedTime").textContent="–";
+  refreshInfoPanel(null, null);
+}
+
+let animToken=0;
+async function playOneTrialAnimated(){
+  if(session.running) return;
+  session.running=true; btnPlay.disabled=true; btnFast5.disabled=true;
+  const myToken=++animToken;
+
+  const player = createPlayer(session.ptype);
+  onTrialStart(player);
+  const game = createGame(FIXED_D, player);
+  const updateFn = getUpdateFn(session.method);
+
+  const speed=parseInt(speedRange.value,10);
+  // speed=1 で実時間1.0倍速（1フレーム=1/30秒ごとに1フレーム進める）になるよう、
+  // tickMsは30fps相当に固定し、framesPerTickだけを2のべき乗で増やして高速化する
+  const framesPerTick = Math.pow(2, speed-1); // 1,2,4,8,16,32
+  const tickMs = 33;
+
+  await new Promise(resolve=>{
+    function tick(){
+      if(myToken!==animToken){ resolve(); return; }
+      for(let s=0;s<framesPerTick;s++){
+        if(game.frame>=FRAMES_PER_TRIAL || game.lives<=0) break;
+        const prevHitCount = game.hitEvents.length;
+        const {focusList, hit} = stepGame(game, player, updateFn);
+        game._lastFocus = focusList;
+        if(hit){
+          flashHit();
+          const ev = game.hitEvents[game.hitEvents.length-1];
+          session.survivalLog.push(ev.survivalTimeSeconds);
+        }
+      }
+      // dLogを同期
+      while(session.dLog.length < game.dHistory.length){
+        session.dLog.push(game.dHistory[session.dLog.length].D);
+      }
+      session.lastPredicted = game.lastPredicted ?? session.lastPredicted;
+      drawGame(game);
+      refreshInfoPanel(game, game.lives>0?"alive":"dead");
+      if(game.frame>=FRAMES_PER_TRIAL || game.lives<=0){ resolve(); return; }
+      setTimeout(tick, tickMs);
+    }
+    tick();
+  });
+  if(myToken!==animToken){ session.running=false; return; }
+
+  session.trialsRun += 1;
+  refreshInfoPanel(game, game.lives>0?"alive":"dead");
+  session.running=false; btnPlay.disabled=false; btnFast5.disabled=false;
+}
+
+function runFastTrials(n){
+  animToken++;
+  let lastGame=null;
+  for(let i=0;i<n;i++){
+    const game = runTrialCompute(session.ptype, session.method);
+    for(const d of game.dHistory) session.dLog.push(d.D);
+    for(const h of game.hitEvents) session.survivalLog.push(h.survivalTimeSeconds);
+    session.lastPredicted = game.lastPredicted ?? session.lastPredicted;
+    session.trialsRun += 1;
+    lastGame = game;
+  }
+  clearField();
+  updateHearts(lastGame.lives);
+  refreshInfoPanel(lastGame, lastGame.lives>0?"alive":"dead");
+}
+
+btnPlay.addEventListener("click", playOneTrialAnimated);
+btnFast5.addEventListener("click", ()=>runFastTrials(5));
+btnReset.addEventListener("click", resetSession);
+ptypeSel.addEventListener("change", resetSession);
+methodSel.addEventListener("change", resetSession);
+
+resetSession();
+</script>
+</body>
+</html>
