@@ -372,77 +372,78 @@
 
     <div class="selected-bit-note" id="bitNote">A = 0　B = 1　X（Cin） = 0　 → 　S = 1　C（Cout） = 0</div>
 
-    <svg class="fa-diagram" viewBox="0 0 920 560" xmlns="http://www.w3.org/2000/svg">
+    <svg class="fa-diagram" viewBox="0 0 920 520" xmlns="http://www.w3.org/2000/svg">
 
-      <!-- ===== labels A, B, X on the far left ===== -->
-      <text x="34" y="150" class="io-label">A</text>
-      <text x="34" y="250" class="io-label">B</text>
-      <text x="34" y="470" class="io-label">X</text>
+      <!-- ===================================================
+           Layout mirrors the hand-drawn sketch:
+           HA1 top-left (takes A,B) ; HA2 below-right of HA1 (takes HA1-sum, X)
+           OR gate sits to the right, fed by both carries.
+           HA1-sum travels down-then-right into HA2's top input.
+           HA2-sum travels straight up and over to S.
+           Carries from both HA's travel to the two OR inputs.
+           No line crosses through a gate box or another wire's node.
+      ==================================================== -->
 
-      <text x="34" y="130" class="io-value" id="valA" fill="var(--hi-a)">0</text>
-      <text x="34" y="230" class="io-value" id="valB" fill="var(--hi-b)">1</text>
-      <text x="34" y="450" class="io-value" id="valX" fill="var(--hi-x)">0</text>
+      <!-- ---- input labels A, B (top), X (lower) ---- -->
+      <text x="30" y="118" class="io-label">A</text>
+      <text x="30" y="218" class="io-label">B</text>
+      <text x="30" y="478" class="io-label">X</text>
 
-      <!-- input stub wires A, B -->
-      <path class="wire" id="w_A_in"  d="M70,143 L150,143" />
-      <path class="wire" id="w_B_in"  d="M70,243 L150,243" />
-      <path class="wire" id="w_X_in"  d="M70,463 L200,463" />
+      <text x="30" y="98"  class="io-value" id="valA" fill="var(--hi-a)">0</text>
+      <text x="30" y="198" class="io-value" id="valB" fill="var(--hi-b)">1</text>
+      <text x="30" y="458" class="io-value" id="valX" fill="var(--hi-x)">0</text>
 
-      <!-- ===== HA1 (top half adder), taking A,B ===== -->
-      <rect x="150" y="90" width="190" height="190" rx="18" class="gate-box"/>
-      <text x="245" y="175" class="gate-sub">半加算器</text>
-      <text x="245" y="200" class="gate-sub" font-size="13">HA1</text>
+      <!-- input stub wires straight into HA1 (A,B) and HA2 (X) -->
+      <path class="wire" id="w_A_in" d="M70,110 L160,110" />
+      <path class="wire" id="w_B_in" d="M70,210 L160,210" />
+      <path class="wire" id="w_X_in" d="M70,470 L300,470" />
 
-      <!-- HA1 input stubs already connected above -->
-      <path class="wire" id="w_A_ha1" d="M150,143 L150,143" />
+      <!-- ===== HA1 : top-left box, inputs A (y110), B (y210) ===== -->
+      <rect x="160" y="70" width="170" height="170" rx="16" class="gate-box"/>
+      <text x="245" y="148" class="gate-sub">半加算器</text>
+      <text x="245" y="172" class="gate-sub" font-size="13">HA1</text>
 
-      <!-- HA1 outputs: sum (top) -> goes down to HA2 as one input; carry (bottom) -> goes to OR -->
-      <path class="wire" id="w_ha1_sum"   d="M340,150 L420,150 L420,215 L280,215 L280,290 L280,420" />
-      <path class="wire" id="w_ha1_carry" d="M340,230 L560,230 L560,190 L610,190" />
+      <!-- HA1 output 1: sum -> exits right side (y=130), routes down past the carry line's height, then left into HA2 top input -->
+      <path class="wire" id="w_ha1_sum" d="M330,130 L480,130 L480,285 L300,285 L300,360" />
+      <!-- HA1 output 2: carry -> exits right side (y=190), travels right to OR's lower input -->
+      <path class="wire" id="w_ha1_carry" d="M330,190 L590,190 L590,300 L659,300" />
 
-      <!-- node dot where sum wire bends down to HA2 -->
-      <circle cx="280" cy="290" r="5" class="node-dot" id="dot_ha1sum"/>
 
-      <!-- ===== HA2 (bottom half adder), taking HA1-sum and X ===== -->
-      <rect x="150" y="420" width="190" height="190" rx="18" class="gate-box"/>
-      <text x="245" y="505" class="gate-sub">半加算器</text>
-      <text x="245" y="530" class="gate-sub" font-size="13">HA2</text>
 
-      <!-- HA2 inputs -->
-      <path class="wire" id="w_sum_into_ha2" d="M280,420 L280,463 L150,463" />
+      <!-- ===== HA2 : lower box, shifted right & down from HA1 ===== -->
+      <!-- inputs: HA1-sum enters top-left (y370), X enters bottom-left (y410) -->
+      <rect x="300" y="330" width="170" height="170" rx="16" class="gate-box"/>
+      <text x="385" y="408" class="gate-sub">半加算器</text>
+      <text x="385" y="432" class="gate-sub" font-size="13">HA2</text>
 
-      <!-- HA2 outputs: sum -> S (final), carry -> OR -->
-      <path class="wire" id="w_ha2_sum"   d="M340,470 L610,470 L610,420 L610,190" />
-      <path class="wire" id="w_ha2_carry" d="M340,550 L590,550 L590,270 L610,270" />
+      <!-- HA2 output 1: sum -> exits right side (y390), rises straight up, becomes S -->
+      <path class="wire" id="w_ha2_sum" d="M470,390 L520,390 L520,60 L760,60" />
+      <!-- HA2 output 2: carry -> exits right side (y450), travels right & up to OR's upper input -->
+      <path class="wire" id="w_ha2_carry" d="M470,450 L610,450 L610,225 L659,225" />
 
-      <!-- S output riser (from HA2 sum node, goes up to top) -->
-      <path class="wire" id="w_S_riser" d="M610,420 L610,80 L760,80" />
-      <circle cx="610" cy="420" r="5" class="node-dot" id="dot_s_branch"/>
 
-      <!-- ===== OR gate ===== -->
-      <path class="gate-box" d="M 660 160 
-               C 700 160, 735 175, 755 230 
-               C 735 285, 700 300, 660 300
-               C 675 255, 675 205, 660 160 Z"/>
-      <text x="705" y="238" class="gate-label">OR</text>
 
-      <!-- OR inputs -->
-      <path class="wire" id="w_or_in1" d="M610,190 L660,190" />
-      <path class="wire" id="w_or_in2" d="M610,270 L660,270" />
+      <!-- ===== OR gate : to the right, two inputs top/bottom, one output ===== -->
+      <path class="gate-box" d="M 650 190
+               C 692 190, 726 210, 745 262
+               C 726 314, 692 334, 650 334
+               C 666 285, 666 239, 650 190 Z"/>
+      <text x="697" y="268" class="gate-label">OR</text>
 
       <!-- OR output -> C -->
-      <path class="wire" id="w_or_out" d="M756,230 L840,230" />
+      <path class="wire" id="w_or_out" d="M747,262 L840,262" />
 
       <!-- ===== S, C output labels ===== -->
-      <text x="765" y="70" class="io-label">S</text>
-      <text x="855" y="238" class="io-label">C</text>
-      <text x="765" y="105" class="io-value" id="valS" fill="var(--hi-out)">1</text>
-      <text x="855" y="270" class="io-value" id="valC" fill="var(--hi-out)">0</text>
+      <text x="765" y="42"  class="io-label">S</text>
+      <text x="855" y="270" class="io-label">C</text>
+      <text x="765" y="78"  class="io-value" id="valS" fill="var(--hi-out)">1</text>
+      <text x="855" y="302" class="io-value" id="valC" fill="var(--hi-out)">0</text>
 
-      <!-- annotation text for internal nodes -->
-      <text x="380" y="140" font-family="'Courier New',monospace" font-size="11" fill="var(--ink-soft)">HA1 の和</text>
-      <text x="565" y="180" font-family="'Courier New',monospace" font-size="11" fill="var(--ink-soft)">HA1 のけた上がり</text>
-      <text x="345" y="565" font-family="'Courier New',monospace" font-size="11" fill="var(--ink-soft)">HA2 のけた上がり</text>
+      <!-- ---- small annotations ---- -->
+      <text x="140" y="128" font-family="'Courier New',monospace" font-size="11" fill="var(--ink-soft)" text-anchor="end">HA1 の和</text>
+      <text x="470" y="180" font-family="'Courier New',monospace" font-size="11" fill="var(--ink-soft)">HA1 のけた上がり</text>
+      <text x="530" y="380" font-family="'Courier New',monospace" font-size="11" fill="var(--ink-soft)">HA2 の和 → S</text>
+      <text x="480" y="470" font-family="'Courier New',monospace" font-size="11" fill="var(--ink-soft)">HA2 のけた上がり</text>
     </svg>
 
     <div class="legend">
@@ -601,13 +602,9 @@
     setWire('w_ha2_sum', d.ha2sum === 1);
     setWire('w_ha2_carry', d.ha2carry === 1);
 
-    setWire('w_S_riser', d.S === 1);
-    setWire('w_or_in1', d.ha1carry === 1);
-    setWire('w_or_in2', d.ha2carry === 1);
     setWire('w_or_out', d.C === 1);
 
-    document.getElementById('dot_ha1sum').classList.toggle('on', d.ha1sum === 1);
-    document.getElementById('dot_s_branch').classList.toggle('on', d.S === 1);
+
   }
 
   function renderAll(){
