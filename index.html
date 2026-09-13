@@ -388,7 +388,7 @@
 
   <header>
     <h1>年日時秒 差引計算機</h1>
-    <p>この世界線に「月」と「分」は存在しない。時刻は <b>A年 B日 C時 D秒</b>（年13bit・符号付き／日9bit・時4bit・秒12bit、計38bit）で表される。1年=365日、1日=16時、1時=4096秒。年は2の補数表現なので負の年（紀元前のような値）も扱える。全加算器は半加算器HA1・HA2とORゲートの組み合わせで、38bitすべてがこの回路を通って計算されます。</p>
+    <p>この世界線に「月」と「分」は存在しない。時刻は <b>A年 B日 C時 D秒</b>（年9bit・符号付き／日9bit・時4bit・秒12bit、計34bit）で表される。1年=365日、1日=16時、1時=4096秒。年は2の補数表現なので負の年（紀元前のような値）も扱える。全加算器は半加算器HA1・HA2とORゲートの組み合わせで、34bitすべてがこの回路を通って計算されます。</p>
 
   </header>
 
@@ -396,9 +396,9 @@
     <h2>時刻 A ― 年 / 日 / 時 / 秒</h2>
     <div class="time-input-grid">
       <div class="field">
-        <label>A年 (-4096–4095)</label>
-        <input type="number" id="A_year" value="1" min="-4096" max="4095">
-        <span class="maxnote">13bit・符号付き（2の補数）</span>
+        <label>A年 (-256–255)</label>
+        <input type="number" id="A_year" value="1" min="-256" max="255">
+        <span class="maxnote">9bit・符号付き（2の補数）</span>
       </div>
       <div class="field">
         <label>B日 (0–364)</label>
@@ -428,9 +428,9 @@
     <h2 style="margin-top:6px;">時刻 B ― 年 / 日 / 時 / 秒</h2>
     <div class="time-input-grid">
       <div class="field">
-        <label>A年 (-4096–4095)</label>
-        <input type="number" id="B_year" value="0" min="-4096" max="4095">
-        <span class="maxnote">13bit・符号付き（2の補数）</span>
+        <label>A年 (-256–255)</label>
+        <input type="number" id="B_year" value="0" min="-256" max="255">
+        <span class="maxnote">9bit・符号付き（2の補数）</span>
       </div>
       <div class="field">
         <label>B日 (0–364)</label>
@@ -452,17 +452,17 @@
 
   <div class="result-panel">
     <h2>計算結果</h2>
-    <div class="overflow-flag" id="overflowFlag">⚠ オーバーフローしました（年が13bit符号付き表現（-4096〜4095）の範囲を超えました）</div>
+    <div class="overflow-flag" id="overflowFlag">⚠ オーバーフローしました（年が9bit符号付き表現（-256〜255）の範囲を超えました）</div>
     <div class="result-grid">
       <div class="result-cell"><div class="rlabel">A年</div><div class="rvalue" id="res_year">—</div></div>
       <div class="result-cell"><div class="rlabel">B日</div><div class="rvalue" id="res_day">—</div></div>
       <div class="result-cell"><div class="rlabel">C時</div><div class="rvalue" id="res_hour">—</div></div>
       <div class="result-cell"><div class="rlabel">D秒</div><div class="rvalue" id="res_sec">—</div></div>
     </div>
-    <div class="note-row">減算時はB側を2の補数にしてAへ加算しています。年フィールドは13bitの符号付き（2の補数）表現なので、そのまま負の値としても扱われます。</div>
+    <div class="note-row">減算時はB側を2の補数にしてAへ加算しています。年フィールドは9bitの符号付き（2の補数）表現なので、そのまま負の値としても扱われます。</div>
 
     <div class="bits-scroll">
-      <div class="stagelabel">全38bit（クリックでその桁の内部信号を下の回路図に表示） ― 左が年の最上位（符号ビット）、右が秒の最下位</div>
+      <div class="stagelabel">全34bit（クリックでその桁の内部信号を下の回路図に表示） ― 左が年の最上位（符号ビット）、右が秒の最下位</div>
       <div class="bits" id="allBits"></div>
     </div>
   </div>
@@ -535,21 +535,21 @@
   </div>
 
   <footer>
-    全加算器 = 半加算器（HA1）＋半加算器（HA2）＋ORゲート。HA1がA・Bを、HA2がその結果と下位からのけた上がりXを処理し、両方のけた上がりをORで合成してCを作ります。38bit全てがこの回路を通って、年・日・時・秒の結果が計算されます（年は13bitの2の補数で符号付き）。
+    全加算器 = 半加算器（HA1）＋半加算器（HA2）＋ORゲート。HA1がA・Bを、HA2がその結果と下位からのけた上がりXを処理し、両方のけた上がりをORで合成してCを作ります。34bit全てがこの回路を通って、年・日・時・秒の結果が計算されます（年は9bitの2の補数で符号付き）。
   </footer>
 
 </div>
 
 <script>
 (function(){
-  const WIDTHS = { A: 13, B: 9, C: 4, D: 12 }; // year(signed, two's complement), day, hour, sec
+  const WIDTHS = { A: 9, B: 9, C: 4, D: 12 }; // year(signed, two's complement), day, hour, sec
   const ORDER = ['A','B','C','D']; // for packing MSB-first display: A(year) B(day) C(hour) D(sec)
   const FIELD_NAME = { A: '年', B: '日', C: '時', D: '秒' };
-  const TOTAL_BITS = 13+9+4+12; // 38 bits total
-  const BITWIDTHS_LSB_ORDER = [ {f:'D', w:12}, {f:'C', w:4}, {f:'B', w:9}, {f:'A', w:13} ]; // packing LSB-first: seconds first
-  const YEAR_BITS = 13;
-  const YEAR_MIN = -(1 << (YEAR_BITS - 1));      // -4096
-  const YEAR_MAX = (1 << (YEAR_BITS - 1)) - 1;    // 4095
+  const TOTAL_BITS = 9+9+4+12; // 34 bits total
+  const BITWIDTHS_LSB_ORDER = [ {f:'D', w:12}, {f:'C', w:4}, {f:'B', w:9}, {f:'A', w:9} ]; // packing LSB-first: seconds first
+  const YEAR_BITS = 9;
+  const YEAR_MIN = -(1 << (YEAR_BITS - 1));      // -256
+  const YEAR_MAX = (1 << (YEAR_BITS - 1)) - 1;    // 255
 
   let currentOp = '+';
 
@@ -780,7 +780,7 @@
 
     // groups shown MSB-first, left to right: year, day(special), hour, sec
     const bitGroups = [
-      {field:'A', cls:'g-a', caption:'年 A (13bit・符号付き・全加算器)'},
+      {field:'A', cls:'g-a', caption:'年 A (9bit・符号付き・全加算器)'},
       {field:'C', cls:'g-c', caption:'時 C (4bit・全加算器)'},
       {field:'D', cls:'g-d', caption:'秒 D (12bit・全加算器)'},
     ];
