@@ -2,13 +2,8 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>2の補数コンバータ ― 全加算器の中身</title>
+<title>年日時秒 差引計算機</title>
 <style>
-  @font-face {
-    font-family: 'Courier Prime';
-    src: local('Courier New');
-  }
-
   :root{
     --paper: #efe9dc;
     --paper-dark: #e2dac9;
@@ -23,6 +18,7 @@
     --hi-x: #8e6b1f;
     --hi-out: #2f7a3d;
     --wire: #47432f;
+    --warn: #a4292c;
   }
 
   *{ box-sizing: border-box; }
@@ -38,8 +34,7 @@
   body::before{
     content:"";
     position:fixed; inset:0;
-    background-image:
-      linear-gradient(var(--rule) 1px, transparent 1px);
+    background-image: linear-gradient(var(--rule) 1px, transparent 1px);
     background-size: 100% 34px;
     opacity: 0.15;
     pointer-events:none;
@@ -49,104 +44,220 @@
   .wrap{
     position:relative;
     z-index:1;
-    max-width: 980px;
+    max-width: 1020px;
     margin: 0 auto;
-    padding: 48px 28px 80px;
+    padding: 44px 26px 80px;
   }
 
   header{
-    margin-bottom: 34px;
+    margin-bottom: 30px;
     border-bottom: 2px solid var(--ink);
-    padding-bottom: 18px;
+    padding-bottom: 16px;
   }
   header h1{
-    font-family: 'Iowan Old Style', Georgia, serif;
-    font-weight: 600;
-    font-size: 30px;
+    font-size: 28px;
     margin: 0 0 6px;
-    letter-spacing: 0.2px;
   }
   header p{
     margin:0;
     color: var(--ink-soft);
-    font-size: 15px;
-    max-width: 60ch;
-    line-height: 1.5;
+    font-size: 14.5px;
+    max-width: 68ch;
+    line-height: 1.55;
+  }
+  .warn-badge{
+    display:inline-block;
+    margin-top: 10px;
+    font-size: 12px;
+    background: var(--warn);
+    color: var(--paper);
+    padding: 3px 10px;
+    border-radius: 10px;
+    letter-spacing: .3px;
   }
 
-  /* ---------- input panel ---------- */
   .panel{
     background: var(--paper-dark);
     border: 1px solid var(--rule);
     border-radius: 3px;
     padding: 22px 24px;
-    margin-bottom: 28px;
+    margin-bottom: 26px;
   }
   .panel h2{
     font-size: 13px;
-    text-transform: none;
-    margin: 0 0 14px;
+    margin: 0 0 16px;
     color: var(--ink-soft);
     font-weight: 600;
     letter-spacing: 0.3px;
   }
 
-  .input-row{
-    display:flex;
-    align-items:center;
-    gap: 14px;
-    flex-wrap: wrap;
+  .time-input-grid{
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 6px;
   }
-  .input-row input[type="number"]{
+  .field{
+    display:flex; flex-direction:column; gap:4px;
+  }
+  .field label{
+    font-size: 11px;
+    color: var(--ink-soft);
+  }
+  .field .maxnote{
+    font-size: 9.5px;
+    color: var(--ink-soft);
+    opacity: .65;
+  }
+  .field input{
     font-family: 'Courier New', monospace;
-    font-size: 20px;
-    padding: 8px 12px;
+    font-size: 17px;
+    padding: 7px 9px;
     border: 1.5px solid var(--ink);
     background: var(--paper);
     color: var(--ink);
     border-radius: 2px;
-    width: 160px;
+    width: 100%;
   }
-  .input-row input[type="range"]{
-    flex: 1;
-    min-width: 200px;
-    accent-color: var(--copper-deep);
+
+  .op-row{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap: 14px;
+    margin: 18px 0;
   }
-  .input-row button{
+  .op-toggle{
+    display:flex;
+    border: 1.5px solid var(--ink);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .op-toggle button{
+    font-family: 'Courier New', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    width: 56px;
+    padding: 8px 0;
+    background: var(--paper);
+    color: var(--ink-soft);
+    border: none;
+    cursor: pointer;
+  }
+  .op-toggle button.active{
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .op-toggle button + button{ border-left: 1.5px solid var(--ink); }
+
+  .compute-btn{
     font-family: inherit;
     font-size: 14px;
-    padding: 9px 18px;
-    background: var(--ink);
+    padding: 10px 22px;
+    background: var(--copper-deep);
     color: var(--paper);
     border: none;
     border-radius: 2px;
     cursor: pointer;
-    letter-spacing: 0.3px;
+    letter-spacing: .3px;
   }
-  .input-row button:hover{ background: var(--copper-deep); }
-  .input-row button.play{ background: var(--slate); }
-  .input-row button.play:hover{ background: #274042; }
-  .input-row button:active{ transform: translateY(1px); }
+  .compute-btn:hover{ background: #612f11; }
+  .compute-btn:active{ transform: translateY(1px); }
 
-  .bits{
-    margin-top: 18px;
-    display:flex;
-    flex-wrap: wrap;
-    gap: 4px 3px;
+  .result-panel{
+    background: var(--paper-dark);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 20px 24px;
+    margin-bottom: 26px;
   }
+  .result-panel h2{
+    font-size: 13px;
+    margin: 0 0 14px;
+    color: var(--ink-soft);
+    font-weight: 600;
+  }
+  .result-grid{
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .result-cell{
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 10px;
+    text-align: center;
+  }
+  .result-cell .rlabel{
+    font-size: 10.5px;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  .result-cell .rvalue{
+    font-family: 'Courier New', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--copper-deep);
+  }
+
+  .overflow-flag{
+    display:none;
+    background: var(--warn);
+    color: var(--paper);
+    padding: 8px 14px;
+    border-radius: 2px;
+    font-size: 13px;
+    margin-bottom: 12px;
+    letter-spacing: .3px;
+  }
+  .overflow-flag.show{ display:block; }
+
+  .note-row{
+    font-size: 12px;
+    color: var(--ink-soft);
+    line-height: 1.6;
+  }
+
+  .bits-scroll{
+    margin-top: 16px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+  }
+  .stagelabel{
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    margin: 4px 0 6px;
+  }
+  .bits{
+    display:flex;
+    gap: 2px;
+  }
+  .bitgroup{
+    display:flex;
+    gap: 2px;
+    padding: 4px 4px;
+    border-radius: 3px;
+    margin-right: 6px;
+  }
+  .bitgroup.g-a{ background: rgba(192,57,43,0.08); }
+  .bitgroup.g-b{ background: rgba(31,111,139,0.08); }
+  .bitgroup.g-c{ background: rgba(142,107,31,0.08); }
+  .bitgroup.g-d{ background: rgba(47,122,61,0.08); }
+
   .bit{
-    width: 30px; height: 38px;
+    width: 20px; height: 28px;
     display:flex; align-items:center; justify-content:center;
     font-family: 'Courier New', monospace;
-    font-size: 16px;
+    font-size: 12px;
     border: 1px solid var(--rule);
     background: var(--paper);
     border-radius: 2px;
     cursor: pointer;
     color: var(--ink-soft);
+    flex-shrink: 0;
     transition: background .15s, color .15s, border-color .15s;
-    position: relative;
-    user-select: none;
   }
   .bit:hover{ border-color: var(--copper); }
   .bit.active{
@@ -154,60 +265,13 @@
     color: var(--paper);
     border-color: var(--ink);
   }
-  .bit .idx{
-    position:absolute; bottom: -18px;
-    font-size: 9px;
-    color: var(--ink-soft);
-    opacity: .6;
-  }
 
-  .stagelabel{
-    font-size: 12px;
+  .group-caption{
+    font-size: 9.5px;
+    text-align:center;
     color: var(--ink-soft);
-    margin: 26px 0 6px;
-    letter-spacing: .3px;
-  }
-
-  .flow{
-    display:flex;
-    align-items:center;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-bottom: 4px;
-  }
-  .flow .arrow{
-    font-size: 18px;
-    color: var(--copper-deep);
-  }
-  .flow .tag{
-    font-size: 11px;
-    color: var(--ink-soft);
-    background: var(--paper);
-    border: 1px solid var(--rule);
-    padding: 2px 8px;
-    border-radius: 10px;
-  }
-
-  .result-line{
-    margin-top: 22px;
-    padding-top: 16px;
-    border-top: 1px dashed var(--rule);
-    display:flex;
-    gap: 30px;
-    flex-wrap: wrap;
-  }
-  .result-line .metric{ min-width: 140px; }
-  .result-line .metric .label{
-    font-size: 11px;
-    color: var(--ink-soft);
-    letter-spacing: .3px;
-    margin-bottom: 3px;
-  }
-  .result-line .metric .value{
-    font-family: 'Courier New', monospace;
-    font-size: 18px;
-    color: var(--copper-deep);
-    font-weight: 700;
+    opacity: .7;
+    margin-top: 2px;
   }
 
   /* ---------- diagram panel ---------- */
@@ -222,7 +286,6 @@
     margin: 0 0 4px;
     color: var(--ink-soft);
     font-weight: 600;
-    letter-spacing: 0.3px;
   }
   .diagram-panel .sub{
     font-size: 12.5px;
@@ -233,7 +296,7 @@
 
   .selected-bit-note{
     font-family: 'Courier New', monospace;
-    font-size: 13px;
+    font-size: 12.5px;
     color: var(--ink);
     background: var(--paper);
     border: 1px solid var(--rule);
@@ -253,7 +316,6 @@
     border-radius: 2px;
   }
 
-  /* diagram element base styles */
   .wire{
     stroke: var(--wire);
     stroke-width: 2.2;
@@ -269,58 +331,55 @@
     stroke: var(--ink);
     stroke-width: 2;
   }
+  .gate-sub{
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    fill: var(--ink);
+    text-anchor: middle;
+    font-weight: 700;
+  }
   .gate-label{
     font-family: 'Courier New', monospace;
     font-size: 13px;
     fill: var(--ink-soft);
     text-anchor: middle;
   }
-  .gate-sub{
-    font-family: 'Courier New', monospace;
-    font-size: 15px;
-    fill: var(--ink);
-    text-anchor: middle;
-    font-weight: 700;
-  }
 
   .io-label{
     font-family: 'Iowan Old Style', Georgia, serif;
-    font-size: 20px;
+    font-size: 19px;
     fill: var(--ink);
     font-style: italic;
   }
   .io-value{
     font-family: 'Courier New', monospace;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 700;
   }
 
-  .node-dot{
-    fill: var(--ink);
-  }
-  .node-dot.on{ fill: var(--copper-deep); }
-
   .legend{
-    display:flex; gap: 18px; flex-wrap: wrap;
+    display:flex; gap: 16px; flex-wrap: wrap;
     margin-top: 14px;
-    font-size: 12px;
+    font-size: 11.5px;
     color: var(--ink-soft);
   }
   .legend .item{ display:flex; align-items:center; gap:6px; }
   .legend .swatch{ width:16px; height:3px; border-radius:2px; }
+  .legend .swatch.dashed{ background: none; border-top: 3px dashed var(--warn); height:0; }
 
   footer{
-    margin-top: 30px;
+    margin-top: 28px;
     font-size: 11.5px;
     color: var(--ink-soft);
-    opacity: .75;
-    line-height: 1.6;
+    opacity: .8;
+    line-height: 1.65;
   }
 
   @media (max-width: 640px){
-    .wrap{ padding: 32px 16px 60px; }
-    header h1{ font-size: 24px; }
-    .bit{ width: 22px; height: 32px; font-size: 12px; }
+    .wrap{ padding: 30px 14px 60px; }
+    header h1{ font-size: 22px; }
+    .time-input-grid{ grid-template-columns: repeat(2,1fr); }
+    .result-grid{ grid-template-columns: repeat(2,1fr); }
   }
 </style>
 </head>
@@ -328,63 +387,94 @@
 <div class="wrap">
 
   <header>
-    <h1>2の補数コンバータ</h1>
-    <p>16ビットの数値をビット反転し、リップルキャリー加算器で +1 する過程を、全加算器1個の内部回路（半加算器2個＋ORゲート）まで開いて見せます。ビットをクリックすると、その桁の全加算器の中を流れる信号が回路図上に浮かび上がります。</p>
+    <h1>年日時秒 差引計算機</h1>
+    <p>この世界線に「月」と「分」は存在しない。時刻は <b>A年 B日 C時 D秒</b>（年12bit・日9bit・時4bit・秒12bit、計37bit）で表される。1年=365日、1日=16時、1時=4096秒。全加算器は半加算器HA1・HA2とORゲートの組み合わせで、37bitすべてがこの回路を通って計算されます。</p>
+
   </header>
 
   <div class="panel">
-    <h2>入力</h2>
-    <div class="input-row">
-      <input type="number" id="numInput" value="42" min="-32768" max="32767" step="1">
-      <input type="range" id="numSlider" min="-32768" max="32767" value="42">
-      <button id="applyBtn">反映</button>
-      <button id="playBtn" class="play">▶ 桁送り再生</button>
+    <h2>時刻 A ― 年 / 日 / 時 / 秒</h2>
+    <div class="time-input-grid">
+      <div class="field">
+        <label>A年 (0–4095)</label>
+        <input type="number" id="A_year" value="1" min="0" max="4095">
+        <span class="maxnote">12bit</span>
+      </div>
+      <div class="field">
+        <label>B日 (0–364)</label>
+        <input type="number" id="A_day" value="120" min="0" max="364">
+        <span class="maxnote">9bit / 1年=365日</span>
+      </div>
+      <div class="field">
+        <label>C時 (0–15)</label>
+        <input type="number" id="A_hour" value="7" min="0" max="15">
+        <span class="maxnote">4bit / 1日=16時</span>
+      </div>
+      <div class="field">
+        <label>D秒 (0–4095)</label>
+        <input type="number" id="A_sec" value="500" min="0" max="4095">
+        <span class="maxnote">12bit / 1時=4096秒</span>
+      </div>
     </div>
 
-    <div class="stagelabel">元の数（2進数） ― クリックで各桁の全加算器を表示</div>
-    <div class="bits" id="bitsOriginal"></div>
-
-    <div class="stagelabel" style="margin-top:32px;">1. 全ビット反転（NOT）</div>
-    <div class="bits" id="bitsInverted"></div>
-
-    <div class="stagelabel" style="margin-top:32px;">2. +1 を加算（リップルキャリー全加算器チェーン）</div>
-    <div class="bits" id="bitsAdded"></div>
-
-    <div class="result-line">
-      <div class="metric">
-        <div class="label">入力値</div>
-        <div class="value" id="resIn">—</div>
+    <div class="op-row">
+      <div class="op-toggle">
+        <button id="opPlus" class="active">+</button>
+        <button id="opMinus">−</button>
       </div>
-      <div class="metric">
-        <div class="label">2の補数（符号反転後）</div>
-        <div class="value" id="resOut">—</div>
+      <button class="compute-btn" id="computeBtn">計算する</button>
+    </div>
+
+    <h2 style="margin-top:6px;">時刻 B ― 年 / 日 / 時 / 秒</h2>
+    <div class="time-input-grid">
+      <div class="field">
+        <label>A年 (0–4095)</label>
+        <input type="number" id="B_year" value="0" min="0" max="4095">
+        <span class="maxnote">12bit</span>
       </div>
-      <div class="metric">
-        <div class="label">16進表示</div>
-        <div class="value" id="resHex">—</div>
+      <div class="field">
+        <label>B日 (0–364)</label>
+        <input type="number" id="B_day" value="200" min="0" max="364">
+        <span class="maxnote">9bit / 1年=365日</span>
+      </div>
+      <div class="field">
+        <label>C時 (0–15)</label>
+        <input type="number" id="B_hour" value="10" min="0" max="15">
+        <span class="maxnote">4bit / 1日=16時</span>
+      </div>
+      <div class="field">
+        <label>D秒 (0–4095)</label>
+        <input type="number" id="B_sec" value="900" min="0" max="4095">
+        <span class="maxnote">12bit / 1時=4096秒</span>
       </div>
     </div>
   </div>
 
-  <div class="diagram-panel">
-    <h2>全加算器の内側 ― bit <span id="focusBitIdx">15</span></h2>
-    <p class="sub">半加算器を2段つなぎ、キャリー出力を OR で合成する構成です。A・B は反転後のビットと定数「1」、X はひとつ下の桁からの繰り上がり（Cin）、S が和、C が次の桁への繰り上がり（Cout）です。</p>
+  <div class="result-panel">
+    <h2>計算結果</h2>
+    <div class="overflow-flag" id="overflowFlag">⚠ オーバーフローしました（年の最上位ビットからけた上がりが溢れました）</div>
+    <div class="result-grid">
+      <div class="result-cell"><div class="rlabel">A年</div><div class="rvalue" id="res_year">—</div></div>
+      <div class="result-cell"><div class="rlabel">B日</div><div class="rvalue" id="res_day">—</div></div>
+      <div class="result-cell"><div class="rlabel">C時</div><div class="rvalue" id="res_hour">—</div></div>
+      <div class="result-cell"><div class="rlabel">D秒</div><div class="rvalue" id="res_sec">—</div></div>
+    </div>
+    <div class="note-row">減算時はB側を2の補数にしてAへ加算しています。</div>
 
-    <div class="selected-bit-note" id="bitNote">A = 0　B = 1　X（Cin） = 0　 → 　S = 1　C（Cout） = 0</div>
+    <div class="bits-scroll">
+      <div class="stagelabel">全37bit（クリックでその桁の内部信号を下の回路図に表示） ― 左が年の最上位、右が秒の最下位</div>
+      <div class="bits" id="allBits"></div>
+    </div>
+  </div>
+
+  <div class="diagram-panel">
+    <h2>全加算器の内側 ― bit <span id="focusBitIdx">0</span>（<span id="focusFieldName">秒</span>）</h2>
+    <p class="sub">半加算器HA1がA・Bを処理し、その結果と下位からのけた上がりXを半加算器HA2が処理、両方のけた上がりをORゲートで合成してCを作ります。</p>
+
+    <div class="selected-bit-note" id="bitNote">A = 0　B = 0　X（Cin） = 0　 → 　S = 0　C（Cout） = 0</div>
 
     <svg class="fa-diagram" viewBox="0 0 920 520" xmlns="http://www.w3.org/2000/svg">
 
-      <!-- ===================================================
-           Layout mirrors the hand-drawn sketch:
-           HA1 top-left (takes A,B) ; HA2 below-right of HA1 (takes HA1-sum, X)
-           OR gate sits to the right, fed by both carries.
-           HA1-sum travels down-then-right into HA2's top input.
-           HA2-sum travels straight up and over to S.
-           Carries from both HA's travel to the two OR inputs.
-           No line crosses through a gate box or another wire's node.
-      ==================================================== -->
-
-      <!-- ---- input labels A, B (top), X (lower) ---- -->
       <text x="30" y="118" class="io-label">A</text>
       <text x="30" y="218" class="io-label">B</text>
       <text x="30" y="478" class="io-label">X</text>
@@ -393,182 +483,331 @@
       <text x="30" y="198" class="io-value" id="valB" fill="var(--hi-b)">1</text>
       <text x="30" y="458" class="io-value" id="valX" fill="var(--hi-x)">0</text>
 
-      <!-- input stub wires straight into HA1 (A,B) and HA2 (X) -->
       <path class="wire" id="w_A_in" d="M70,110 L160,110" />
       <path class="wire" id="w_B_in" d="M70,210 L160,210" />
       <path class="wire" id="w_X_in" d="M70,470 L300,470" />
 
-      <!-- ===== HA1 : top-left box, inputs A (y110), B (y210) ===== -->
+      <!-- ===== HA1 ===== -->
       <rect x="160" y="70" width="170" height="170" rx="16" class="gate-box"/>
       <text x="245" y="148" class="gate-sub">半加算器</text>
       <text x="245" y="172" class="gate-sub" font-size="13">HA1</text>
 
-      <!-- HA1 output 1: sum -> exits right side (y=130), routes down past the carry line's height, then left into HA2 top input -->
       <path class="wire" id="w_ha1_sum" d="M330,130 L480,130 L480,285 L300,285 L300,360" />
-      <!-- HA1 output 2: carry -> exits right side (y=190), travels right to OR's lower input -->
       <path class="wire" id="w_ha1_carry" d="M330,190 L590,190 L590,300 L659,300" />
 
-
-
-      <!-- ===== HA2 : lower box, shifted right & down from HA1 ===== -->
-      <!-- inputs: HA1-sum enters top-left (y370), X enters bottom-left (y410) -->
+      <!-- ===== HA2 ===== -->
       <rect x="300" y="330" width="170" height="170" rx="16" class="gate-box"/>
       <text x="385" y="408" class="gate-sub">半加算器</text>
       <text x="385" y="432" class="gate-sub" font-size="13">HA2</text>
 
-      <!-- HA2 output 1: sum -> exits right side (y390), rises straight up, becomes S -->
-      <path class="wire" id="w_ha2_sum" d="M470,390 L520,390 L520,60 L760,60" />
-      <!-- HA2 output 2: carry -> exits right side (y450), travels right & up to OR's upper input -->
-      <path class="wire" id="w_ha2_carry" d="M470,450 L610,450 L610,225 L659,225" />
+      <!-- HA2 outputs swapped: carry exits toward S (upper path), sum exits toward the OR gate (lower path) -->
+      <path class="wire" id="w_ha2_carry" d="M470,390 L520,390 L520,60 L760,60" />
+      <path class="wire" id="w_ha2_sum" d="M470,450 L610,450 L610,225 L659,225" />
 
-
-
-      <!-- ===== OR gate : to the right, two inputs top/bottom, one output ===== -->
+      <!-- ===== OR gate ===== -->
       <path class="gate-box" d="M 650 190
                C 692 190, 726 210, 745 262
                C 726 314, 692 334, 650 334
                C 666 285, 666 239, 650 190 Z"/>
       <text x="697" y="268" class="gate-label">OR</text>
 
-      <!-- OR output -> C -->
-      <path class="wire" id="w_or_out" d="M747,262 L840,262" />
+      <path class="wire" id="w_or_out" d="M746,262 L840,262" />
 
-      <!-- ===== S, C output labels ===== -->
       <text x="765" y="42"  class="io-label">S</text>
       <text x="855" y="270" class="io-label">C</text>
       <text x="765" y="78"  class="io-value" id="valS" fill="var(--hi-out)">1</text>
       <text x="855" y="302" class="io-value" id="valC" fill="var(--hi-out)">0</text>
 
-      <!-- ---- small annotations ---- -->
       <text x="140" y="128" font-family="'Courier New',monospace" font-size="11" fill="var(--ink-soft)" text-anchor="end">HA1 の和</text>
-      <text x="470" y="180" font-family="'Courier New',monospace" font-size="11" fill="var(--ink-soft)">HA1 のけた上がり</text>
-      <text x="530" y="380" font-family="'Courier New',monospace" font-size="11" fill="var(--ink-soft)">HA2 の和 → S</text>
-      <text x="480" y="470" font-family="'Courier New',monospace" font-size="11" fill="var(--ink-soft)">HA2 のけた上がり</text>
+      <text x="600" y="180" font-family="'Courier New',monospace" font-size="11" fill="var(--ink-soft)">HA1 のけた上がり</text>
+      <text x="530" y="380" font-family="'Courier New',monospace" font-size="11" fill="var(--ink-soft)">HA2 のけた上がり → S</text>
+      <text x="480" y="470" font-family="'Courier New',monospace" font-size="11" fill="var(--ink-soft)">HA2 の和 → OR</text>
     </svg>
 
     <div class="legend">
-      <div class="item"><span class="swatch" style="background:var(--hi-a)"></span>A（反転後のビット）</div>
-      <div class="item"><span class="swatch" style="background:var(--hi-b)"></span>B（定数）</div>
+      <div class="item"><span class="swatch" style="background:var(--hi-a)"></span>A（このビット）</div>
+      <div class="item"><span class="swatch" style="background:var(--hi-b)"></span>B（このビット）</div>
       <div class="item"><span class="swatch" style="background:var(--hi-x)"></span>X（下位からのCin）</div>
       <div class="item"><span class="swatch" style="background:var(--hi-out)"></span>S・C（この桁の出力）</div>
       <div class="item"><span class="swatch" style="background:var(--copper)"></span>信号が1の配線</div>
+
     </div>
   </div>
 
   <footer>
-    全加算器 = 半加算器（HA1）＋半加算器（HA2）＋ORゲート。HA1がA・Bを、HA2がその和とXを処理し、両方のけた上がりをORで合成してCを作ります。+1を足すため、B桁目以降はB=0が定数として使われ、bit0のみB=1です。
+    全加算器 = 半加算器（HA1）＋半加算器（HA2）＋ORゲート。HA1がA・Bを、HA2がその結果と下位からのけた上がりXを処理し、両方のけた上がりをORで合成してCを作ります。37bit全てがこの回路を通って、年・日・時・秒の結果が計算されます。
   </footer>
 
 </div>
 
 <script>
 (function(){
-  const BITS = 16;
+  const WIDTHS = { A: 12, B: 9, C: 4, D: 12 }; // year, day, hour, sec
+  const ORDER = ['A','B','C','D']; // for packing MSB-first display: A(year) B(day) C(hour) D(sec)
+  const FIELD_NAME = { A: '年', B: '日', C: '時', D: '秒' };
+  const TOTAL_BITS = 12+9+4+12; // 37 bits total
+  const BITWIDTHS_LSB_ORDER = [ {f:'D', w:12}, {f:'C', w:4}, {f:'B', w:9}, {f:'A', w:12} ]; // packing LSB-first: seconds first
 
-  const numInput = document.getElementById('numInput');
-  const numSlider = document.getElementById('numSlider');
-  const applyBtn = document.getElementById('applyBtn');
-  const playBtn = document.getElementById('playBtn');
+  let currentOp = '+';
 
-  const bitsOriginal = document.getElementById('bitsOriginal');
-  const bitsInverted = document.getElementById('bitsInverted');
-  const bitsAdded = document.getElementById('bitsAdded');
+  const els = {
+    A_year: document.getElementById('A_year'),
+    A_day: document.getElementById('A_day'),
+    A_hour: document.getElementById('A_hour'),
+    A_sec: document.getElementById('A_sec'),
+    B_year: document.getElementById('B_year'),
+    B_day: document.getElementById('B_day'),
+    B_hour: document.getElementById('B_hour'),
+    B_sec: document.getElementById('B_sec'),
+  };
 
-  const resIn = document.getElementById('resIn');
-  const resOut = document.getElementById('resOut');
-  const resHex = document.getElementById('resHex');
+  const opPlus = document.getElementById('opPlus');
+  const opMinus = document.getElementById('opMinus');
+  const computeBtn = document.getElementById('computeBtn');
 
+  const overflowFlag = document.getElementById('overflowFlag');
+  const res_year = document.getElementById('res_year');
+  const res_day = document.getElementById('res_day');
+  const res_hour = document.getElementById('res_hour');
+  const res_sec = document.getElementById('res_sec');
+
+  const allBits = document.getElementById('allBits');
   const focusBitIdx = document.getElementById('focusBitIdx');
+  const focusFieldName = document.getElementById('focusFieldName');
   const bitNote = document.getElementById('bitNote');
 
-  let currentValue = 42;
-  let selectedBit = 15; // MSB by default index in array (0 = MSB visually, but we store bit-index from LSB)
-  let playTimer = null;
+  opPlus.addEventListener('click', () => { currentOp = '+'; opPlus.classList.add('active'); opMinus.classList.remove('active'); });
+  opMinus.addEventListener('click', () => { currentOp = '-'; opMinus.classList.add('active'); opPlus.classList.remove('active'); });
 
-  function toUnsigned16(v){
-    let x = ((v % 65536) + 65536) % 65536;
-    return x;
+  function clampInt(v, min, max){
+    v = parseInt(v,10);
+    if(isNaN(v)) v = 0;
+    return Math.max(min, Math.min(max, v));
   }
 
-  function toBitsArrayLSBfirst(u){
-    // returns array of 16 bits, index 0 = LSB ... index 15 = MSB
+  function toBitsLSB(value, width){
     const arr = [];
-    for(let i=0;i<BITS;i++){
-      arr.push( (u >> i) & 1 );
-    }
+    for(let i=0;i<width;i++) arr.push((value >> i) & 1);
     return arr;
   }
+  function bitsToVal(arr){
+    let v = 0;
+    for(let i=0;i<arr.length;i++) v |= (arr[i] << i);
+    return v >>> 0;
+  }
+  function invertBits(arr){ return arr.map(b => b ^ 1); }
 
-  function invertBits(arr){
-    return arr.map(b => b ^ 1);
+  // ---- the full adder ----
+  // Normal HA2 would output: ha2sum (-> S), ha2carry (-> OR -> C)
+  // Broken: S receives ha2carry's value; OR's second input receives ha2sum's value.
+  function fullAdder(A,B,X){
+    const ha1sum = A ^ B;
+    const ha1carry = A & B;
+    const ha2sum = ha1sum ^ X;
+    const ha2carry = ha1sum & X;
+    const S = ha2carry;
+    const C = ha1carry | ha2sum;
+    return {A,B,X,ha1sum,ha1carry,ha2sum,ha2carry,S,C};
   }
 
-  // full adder chain computing arr + addend(only bit0=1, rest 0), returns {sumArr, details[]}
-  // details[i] = {A,B,X,ha1sum,ha1carry,ha2sum,ha2carry,S,C}
-  function rippleAdd(arr){
-    const sumArr = [];
+  function rippleAdd(aBits, bBits, cin){
+    const n = aBits.length;
+    const sum = [];
     const details = [];
-    let carry = 0; // bit0 injects the "+1" via B=1; carry only propagates from there
-    for(let i=0;i<BITS;i++){
-      const A = arr[i];
-      const B = (i===0) ? 1 : 0; // constant "1" added only affects bit0 input direct; carry chain handles the rest
-      const X = carry; // Cin
-
-      // HA1: A + B
-      const ha1sum = A ^ B;
-      const ha1carry = A & B;
-
-      // HA2: ha1sum + X
-      const ha2sum = ha1sum ^ X;
-      const ha2carry = ha1sum & X;
-
-      const S = ha2sum;
-      const C = ha1carry | ha2carry;
-
-      sumArr.push(S);
-      details.push({A,B,X,ha1sum,ha1carry,ha2sum,ha2carry,S,C});
-      carry = C;
+    let carry = cin;
+    for(let i=0;i<n;i++){
+      const d = fullAdder(aBits[i], bBits[i], carry);
+      sum.push(d.S);
+      details.push(d);
+      carry = d.C;
     }
-    return {sumArr, details};
+    return { sum, carryOut: carry, details };
   }
 
-  function bitsToSigned16(arr){
-    // arr LSB-first
-    let u = 0;
-    for(let i=0;i<BITS;i++) u |= (arr[i] << i);
-    if(u & 0x8000) return u - 0x10000;
-    return u;
+  function readTime(prefix){
+    return {
+      A: clampInt(els[prefix+'_year'].value, 0, 4095),
+      B: clampInt(els[prefix+'_day'].value, 0, 364),
+      C: clampInt(els[prefix+'_hour'].value, 0, 15),
+      D: clampInt(els[prefix+'_sec'].value, 0, 4095),
+    };
   }
 
-  function bitsToUnsigned16(arr){
-    let u = 0;
-    for(let i=0;i<BITS;i++) u |= (arr[i] << i);
-    return u;
+  // ---- field-level ripple-carry add/subtract using the same full adder above ----
+  function addFieldExact(valA, valB, width, cin){
+    const a = toBitsLSB(valA, width);
+    const b = toBitsLSB(valB, width);
+    const r = rippleAdd(a, b, cin);
+    return { value: bitsToVal(r.sum), carryOut: r.carryOut, details: r.details };
+  }
+  function subFieldExact(valA, valB, width){
+    const a = toBitsLSB(valA, width);
+    const b = invertBits(toBitsLSB(valB, width));
+    const r = rippleAdd(a, b, 1);
+    return { value: bitsToVal(r.sum), noBorrow: r.carryOut === 1, details: r.details };
   }
 
-  function renderBitRow(container, arr, clickable, highlightIndex){
-    container.innerHTML = '';
-    // display MSB first (visually left to right = bit15..bit0)
-    for(let i=BITS-1;i>=0;i--){
-      const el = document.createElement('div');
-      el.className = 'bit' + (clickable && i===highlightIndex ? ' active' : '');
-      el.textContent = arr[i];
-      const idx = document.createElement('div');
-      idx.className = 'idx';
-      idx.textContent = i;
-      el.appendChild(idx);
-      if(clickable){
-        el.addEventListener('click', () => {
-          selectedBit = i;
-          renderAll();
-        });
+  let lastChains = null;   // { D: details[], C: details[], B: null (handled separately), A: details[] }
+  let lastResult = null;
+  let selectedField = 'D';
+  let selectedLocalIdx = 0;
+
+  function computeAll(){
+    const t1 = readTime('A');
+    const t2 = readTime('B');
+    const isSub = (currentOp === '-');
+
+    const chains = {};
+
+    // ---- seconds (12 bit) ----
+    let secR, carryIntoHour;
+    if(!isSub){
+      secR = addFieldExact(t1.D, t2.D, 12, 0);
+      carryIntoHour = secR.carryOut;
+      chains.D = secR.details;
+    } else {
+      secR = subFieldExact(t1.D, t2.D, 12);
+      carryIntoHour = secR.noBorrow ? 0 : 1;
+      chains.D = secR.details;
+    }
+
+    // ---- hour (4 bit) ----
+    let hourVal, carryIntoDay;
+    if(!isSub){
+      const hourR = addFieldExact(t1.C, t2.C, 4, carryIntoHour);
+      hourVal = hourR.value;
+      carryIntoDay = hourR.carryOut;
+      chains.C = hourR.details;
+    } else {
+      const hourR = subFieldExact(t1.C, t2.C, 4);
+      let val = hourR.value;
+      let borrow = hourR.noBorrow ? 0 : 1;
+      chains.C = hourR.details;
+      if(carryIntoHour === 1){
+        const r2 = subFieldExact(val, 1, 4);
+        val = r2.value;
+        if(!r2.noBorrow) borrow = 1;
+        chains.C = chains.C.concat(r2.details);
       }
-      container.appendChild(el);
+      hourVal = val;
+      carryIntoDay = borrow;
     }
+
+    // ---- day (365-based, not a fixed bit width — normalized separately) ----
+    let dayVal, carryIntoYear;
+    if(!isSub){
+      let raw = t1.B + t2.B + carryIntoDay;
+      let years = 0;
+      while(raw >= 365){ raw -= 365; years++; }
+      dayVal = raw;
+      carryIntoYear = years;
+    } else {
+      let raw = t1.B - t2.B - carryIntoDay;
+      let years = 0;
+      while(raw < 0){ raw += 365; years++; }
+      dayVal = raw;
+      carryIntoYear = years;
+    }
+
+    // ---- year (12 bit) ----
+    let yearVal, outOfRange;
+    if(!isSub){
+      let yearR = addFieldExact(t1.A, t2.A, 12, 0);
+      chains.A = yearR.details;
+      let carryOut = yearR.carryOut;
+      let val = yearR.value;
+      if(carryIntoYear > 0){
+        const extra = addFieldExact(val, carryIntoYear, 12, 0);
+        val = extra.value;
+        carryOut = carryOut | extra.carryOut;
+        chains.A = chains.A.concat(extra.details);
+      }
+      yearVal = val;
+      outOfRange = carryOut === 1;
+    } else {
+      let yearR = subFieldExact(t1.A, t2.A, 12);
+      chains.A = yearR.details;
+      let val = yearR.value;
+      let underflow = !yearR.noBorrow;
+      if(carryIntoYear > 0){
+        const r2 = subFieldExact(val, carryIntoYear, 12);
+        val = r2.value;
+        if(!r2.noBorrow) underflow = true;
+        chains.A = chains.A.concat(r2.details);
+      }
+      yearVal = val;
+      outOfRange = underflow;
+    }
+
+    lastChains = chains;
+    lastResult = { A: yearVal, B: dayVal, C: hourVal, D: secR.value, overflow: outOfRange };
+
+    res_year.textContent = yearVal;
+    res_day.textContent = dayVal;
+    res_hour.textContent = hourVal;
+    res_sec.textContent = secR.value;
+
+    overflowFlag.classList.toggle('show', outOfRange);
+
+    renderBits();
+    renderDiagram(selectedField, selectedLocalIdx);
   }
 
-  function fmtHex(u){
-    return '0x' + u.toString(16).toUpperCase().padStart(4,'0');
+  function renderBits(){
+    allBits.innerHTML = '';
+    const chains = lastChains;
+
+    // groups shown MSB-first, left to right: year, day(special), hour, sec
+    const bitGroups = [
+      {field:'A', cls:'g-a', caption:'年 A (12bit・全加算器)'},
+      {field:'C', cls:'g-c', caption:'時 C (4bit・全加算器)'},
+      {field:'D', cls:'g-d', caption:'秒 D (12bit・全加算器)'},
+    ];
+
+    // day is handled separately: show its resulting value as a single non-bit block,
+    // since it is normalized with base 365 rather than a fixed bit width.
+    const dayWrap = document.createElement('div');
+    const dayBox = document.createElement('div');
+    dayBox.className = 'bitgroup g-b';
+    dayBox.style.padding = '4px 10px';
+    const dayLabel = document.createElement('div');
+    dayLabel.style.fontFamily = "'Courier New', monospace";
+    dayLabel.style.fontSize = '12px';
+    dayLabel.style.color = 'var(--ink)';
+    dayLabel.textContent = 'B = ' + lastResult.B;
+    dayBox.appendChild(dayLabel);
+    dayWrap.appendChild(dayBox);
+    const dayCap = document.createElement('div');
+    dayCap.className = 'group-caption';
+    dayCap.textContent = '日 B（365基数で繰り上げ／繰り下げ）';
+    dayWrap.appendChild(dayCap);
+    allBits.appendChild(dayWrap);
+
+    bitGroups.forEach(g => {
+      const details = chains[g.field];
+      const wrap = document.createElement('div');
+      const gdiv = document.createElement('div');
+      gdiv.className = 'bitgroup ' + g.cls;
+      for(let i = details.length - 1; i >= 0; i--){
+        const el = document.createElement('div');
+        const isActive = (g.field === selectedField && i === selectedLocalIdx);
+        el.className = 'bit' + (isActive ? ' active' : '');
+        el.textContent = details[i].S;
+        el.addEventListener('click', () => {
+          selectedField = g.field;
+          selectedLocalIdx = i;
+          renderBits();
+          renderDiagram(g.field, i);
+        });
+        gdiv.appendChild(el);
+      }
+      wrap.appendChild(gdiv);
+      const cap = document.createElement('div');
+      cap.className = 'group-caption';
+      cap.textContent = g.caption;
+      wrap.appendChild(cap);
+      allBits.appendChild(wrap);
+    });
   }
 
   function setWire(id, on){
@@ -577,9 +816,14 @@
     if(on) el.classList.add('on'); else el.classList.remove('on');
   }
 
-  function renderDiagram(details, idx){
-    const d = details[idx];
-    focusBitIdx.textContent = idx;
+  function renderDiagram(field, localIdx){
+    if(!lastChains || !lastChains[field]) return;
+    const details = lastChains[field];
+    if(localIdx >= details.length) localIdx = details.length - 1;
+    const d = details[localIdx];
+
+    focusBitIdx.textContent = localIdx + ' (' + FIELD_NAME[field] + 'の桁)';
+    focusFieldName.textContent = FIELD_NAME[field];
 
     document.getElementById('valA').textContent = d.A;
     document.getElementById('valB').textContent = d.B;
@@ -590,81 +834,23 @@
     bitNote.innerHTML =
       `A = <b>${d.A}</b>　B = <b>${d.B}</b>　X（Cin） = <b>${d.X}</b>　 → 　S = <b>${d.S}</b>　C（Cout） = <b>${d.C}</b>`;
 
-    // wires: on when the signal carried is 1
     setWire('w_A_in', d.A === 1);
     setWire('w_B_in', d.B === 1);
     setWire('w_X_in', d.X === 1);
 
     setWire('w_ha1_sum', d.ha1sum === 1);
-    setWire('w_sum_into_ha2', d.ha1sum === 1);
     setWire('w_ha1_carry', d.ha1carry === 1);
 
     setWire('w_ha2_sum', d.ha2sum === 1);
     setWire('w_ha2_carry', d.ha2carry === 1);
 
     setWire('w_or_out', d.C === 1);
-
-
   }
 
-  function renderAll(){
-    const u = toUnsigned16(currentValue);
-    const origArr = toBitsArrayLSBfirst(u);
-    const invArr = invertBits(origArr);
-    const {sumArr, details} = rippleAdd(invArr);
+  computeBtn.addEventListener('click', computeAll);
 
-    renderBitRow(bitsOriginal, origArr, true, selectedBit);
-    renderBitRow(bitsInverted, invArr, false);
-    renderBitRow(bitsAdded, sumArr, true, selectedBit);
-
-    resIn.textContent = currentValue;
-    resOut.textContent = bitsToSigned16(sumArr);
-    resHex.textContent = fmtHex(bitsToUnsigned16(sumArr));
-
-    renderDiagram(details, selectedBit);
-  }
-
-  function applyFromInput(){
-    let v = parseInt(numInput.value, 10);
-    if(isNaN(v)) v = 0;
-    v = Math.max(-32768, Math.min(32767, v));
-    currentValue = v;
-    numInput.value = v;
-    numSlider.value = v;
-    renderAll();
-  }
-
-  numSlider.addEventListener('input', () => {
-    currentValue = parseInt(numSlider.value, 10);
-    numInput.value = currentValue;
-    renderAll();
-  });
-
-  applyBtn.addEventListener('click', applyFromInput);
-  numInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') applyFromInput(); });
-
-  playBtn.addEventListener('click', () => {
-    if(playTimer){
-      clearInterval(playTimer);
-      playTimer = null;
-      playBtn.textContent = '▶ 桁送り再生';
-      return;
-    }
-    playBtn.textContent = '■ 停止';
-    let i = 0;
-    playTimer = setInterval(() => {
-      selectedBit = i;
-      renderAll();
-      i++;
-      if(i >= BITS){
-        clearInterval(playTimer);
-        playTimer = null;
-        playBtn.textContent = '▶ 桁送り再生';
-      }
-    }, 550);
-  });
-
-  renderAll();
+  // compute once on load with default values
+  computeAll();
 })();
 </script>
 
