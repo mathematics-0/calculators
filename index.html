@@ -388,7 +388,7 @@
 
   <header>
     <h1>年日時秒 差引計算機</h1>
-    <p>この世界線に「月」と「分」は存在しない。時刻は <b>A年 B日 C時 D秒</b>（年12bit・日9bit・時4bit・秒12bit、計37bit）で表される。1年=365日、1日=16時、1時=4096秒。全加算器は半加算器HA1・HA2とORゲートの組み合わせで、37bitすべてがこの回路を通って計算されます。</p>
+    <p>この世界線に「月」と「分」は存在しない。時刻は <b>A年 B日 C時 D秒</b>（年13bit・符号付き／日9bit・時4bit・秒12bit、計38bit）で表される。1年=365日、1日=16時、1時=4096秒。年は2の補数表現なので負の年（紀元前のような値）も扱える。全加算器は半加算器HA1・HA2とORゲートの組み合わせで、38bitすべてがこの回路を通って計算されます。</p>
 
   </header>
 
@@ -396,9 +396,9 @@
     <h2>時刻 A ― 年 / 日 / 時 / 秒</h2>
     <div class="time-input-grid">
       <div class="field">
-        <label>A年 (0–4095)</label>
-        <input type="number" id="A_year" value="1" min="0" max="4095">
-        <span class="maxnote">12bit</span>
+        <label>A年 (-4096–4095)</label>
+        <input type="number" id="A_year" value="1" min="-4096" max="4095">
+        <span class="maxnote">13bit・符号付き（2の補数）</span>
       </div>
       <div class="field">
         <label>B日 (0–364)</label>
@@ -428,9 +428,9 @@
     <h2 style="margin-top:6px;">時刻 B ― 年 / 日 / 時 / 秒</h2>
     <div class="time-input-grid">
       <div class="field">
-        <label>A年 (0–4095)</label>
-        <input type="number" id="B_year" value="0" min="0" max="4095">
-        <span class="maxnote">12bit</span>
+        <label>A年 (-4096–4095)</label>
+        <input type="number" id="B_year" value="0" min="-4096" max="4095">
+        <span class="maxnote">13bit・符号付き（2の補数）</span>
       </div>
       <div class="field">
         <label>B日 (0–364)</label>
@@ -452,17 +452,17 @@
 
   <div class="result-panel">
     <h2>計算結果</h2>
-    <div class="overflow-flag" id="overflowFlag">⚠ オーバーフローしました（年の最上位ビットからけた上がりが溢れました）</div>
+    <div class="overflow-flag" id="overflowFlag">⚠ オーバーフローしました（年が13bit符号付き表現（-4096〜4095）の範囲を超えました）</div>
     <div class="result-grid">
       <div class="result-cell"><div class="rlabel">A年</div><div class="rvalue" id="res_year">—</div></div>
       <div class="result-cell"><div class="rlabel">B日</div><div class="rvalue" id="res_day">—</div></div>
       <div class="result-cell"><div class="rlabel">C時</div><div class="rvalue" id="res_hour">—</div></div>
       <div class="result-cell"><div class="rlabel">D秒</div><div class="rvalue" id="res_sec">—</div></div>
     </div>
-    <div class="note-row">減算時はB側を2の補数にしてAへ加算しています。</div>
+    <div class="note-row">減算時はB側を2の補数にしてAへ加算しています。年フィールドは13bitの符号付き（2の補数）表現なので、そのまま負の値としても扱われます。</div>
 
     <div class="bits-scroll">
-      <div class="stagelabel">全37bit（クリックでその桁の内部信号を下の回路図に表示） ― 左が年の最上位、右が秒の最下位</div>
+      <div class="stagelabel">全38bit（クリックでその桁の内部信号を下の回路図に表示） ― 左が年の最上位（符号ビット）、右が秒の最下位</div>
       <div class="bits" id="allBits"></div>
     </div>
   </div>
@@ -535,18 +535,21 @@
   </div>
 
   <footer>
-    全加算器 = 半加算器（HA1）＋半加算器（HA2）＋ORゲート。HA1がA・Bを、HA2がその結果と下位からのけた上がりXを処理し、両方のけた上がりをORで合成してCを作ります。37bit全てがこの回路を通って、年・日・時・秒の結果が計算されます。
+    全加算器 = 半加算器（HA1）＋半加算器（HA2）＋ORゲート。HA1がA・Bを、HA2がその結果と下位からのけた上がりXを処理し、両方のけた上がりをORで合成してCを作ります。38bit全てがこの回路を通って、年・日・時・秒の結果が計算されます（年は13bitの2の補数で符号付き）。
   </footer>
 
 </div>
 
 <script>
 (function(){
-  const WIDTHS = { A: 12, B: 9, C: 4, D: 12 }; // year, day, hour, sec
+  const WIDTHS = { A: 13, B: 9, C: 4, D: 12 }; // year(signed, two's complement), day, hour, sec
   const ORDER = ['A','B','C','D']; // for packing MSB-first display: A(year) B(day) C(hour) D(sec)
   const FIELD_NAME = { A: '年', B: '日', C: '時', D: '秒' };
-  const TOTAL_BITS = 12+9+4+12; // 37 bits total
-  const BITWIDTHS_LSB_ORDER = [ {f:'D', w:12}, {f:'C', w:4}, {f:'B', w:9}, {f:'A', w:12} ]; // packing LSB-first: seconds first
+  const TOTAL_BITS = 13+9+4+12; // 38 bits total
+  const BITWIDTHS_LSB_ORDER = [ {f:'D', w:12}, {f:'C', w:4}, {f:'B', w:9}, {f:'A', w:13} ]; // packing LSB-first: seconds first
+  const YEAR_BITS = 13;
+  const YEAR_MIN = -(1 << (YEAR_BITS - 1));      // -4096
+  const YEAR_MAX = (1 << (YEAR_BITS - 1)) - 1;    // 4095
 
   let currentOp = '+';
 
@@ -597,6 +600,22 @@
   }
   function invertBits(arr){ return arr.map(b => b ^ 1); }
 
+  // ---- signed (two's complement) helpers for the year field ----
+  function signedToBitsLSB(value, width){
+    // JS's >> works fine on negative numbers via two's complement already,
+    // but we mask explicitly so values outside the width wrap predictably.
+    const mask = (1 << width) - 1;
+    const u = value & mask;
+    return toBitsLSB(u, width);
+  }
+  function bitsToSignedVal(arr){
+    const width = arr.length;
+    let v = bitsToVal(arr); // unsigned reading
+    const signBit = arr[width - 1];
+    if(signBit === 1){ v = v - (1 << width); } // interpret as negative
+    return v;
+  }
+
   // ---- the full adder ----
   // Normal HA2 would output: ha2sum (-> S), ha2carry (-> OR -> C)
   // Broken: S receives ha2carry's value; OR's second input receives ha2sum's value.
@@ -626,7 +645,7 @@
 
   function readTime(prefix){
     return {
-      A: clampInt(els[prefix+'_year'].value, 0, 4095),
+      A: clampInt(els[prefix+'_year'].value, YEAR_MIN, YEAR_MAX),
       B: clampInt(els[prefix+'_day'].value, 0, 364),
       C: clampInt(els[prefix+'_hour'].value, 0, 15),
       D: clampInt(els[prefix+'_sec'].value, 0, 4095),
@@ -645,6 +664,19 @@
     const b = invertBits(toBitsLSB(valB, width));
     const r = rippleAdd(a, b, 1);
     return { value: bitsToVal(r.sum), noBorrow: r.carryOut === 1, details: r.details };
+  }
+
+  // ---- signed add for the year field (two's complement, fixed 13-bit width) ----
+  // Both add and subtract reduce to addition here: A - B == A + (-B) in two's complement.
+  function addFieldSigned(valA, valBSigned, width){
+    const a = signedToBitsLSB(valA, width);
+    const b = signedToBitsLSB(valBSigned, width);
+    const r = rippleAdd(a, b, 0);
+    const signedResult = bitsToSignedVal(r.sum);
+    // signed overflow: inputs share a sign, but the result's sign differs from them
+    const aNeg = valA < 0, bNeg = valBSigned < 0, resNeg = signedResult < 0;
+    const signOverflow = (aNeg === bNeg) && (resNeg !== aNeg);
+    return { value: signedResult, overflow: signOverflow, details: r.details };
   }
 
   let lastChains = null;   // { D: details[], C: details[], B: null (handled separately), A: details[] }
@@ -709,35 +741,24 @@
       carryIntoYear = years;
     }
 
-    // ---- year (12 bit) ----
-    let yearVal, outOfRange;
-    if(!isSub){
-      let yearR = addFieldExact(t1.A, t2.A, 12, 0);
-      chains.A = yearR.details;
-      let carryOut = yearR.carryOut;
-      let val = yearR.value;
-      if(carryIntoYear > 0){
-        const extra = addFieldExact(val, carryIntoYear, 12, 0);
-        val = extra.value;
-        carryOut = carryOut | extra.carryOut;
-        chains.A = chains.A.concat(extra.details);
-      }
-      yearVal = val;
-      outOfRange = carryOut === 1;
-    } else {
-      let yearR = subFieldExact(t1.A, t2.A, 12);
-      chains.A = yearR.details;
-      let val = yearR.value;
-      let underflow = !yearR.noBorrow;
-      if(carryIntoYear > 0){
-        const r2 = subFieldExact(val, carryIntoYear, 12);
-        val = r2.value;
-        if(!r2.noBorrow) underflow = true;
-        chains.A = chains.A.concat(r2.details);
-      }
-      yearVal = val;
-      outOfRange = underflow;
+    // ---- year (13 bit, signed / two's complement) ----
+    // Reduce everything to one signed addition: A_year + (±B_year) + (±carry/borrow from day).
+    let yearB = isSub ? -t2.A : t2.A;               // subtraction = add the negation
+    let carryTerm = isSub ? -carryIntoYear : carryIntoYear; // day borrow subtracts, day carry adds
+
+    let yearR = addFieldSigned(t1.A, yearB, YEAR_BITS);
+    chains.A = yearR.details;
+    let val = yearR.value;
+    let overflowed = yearR.overflow;
+
+    if(carryTerm !== 0){
+      const extra = addFieldSigned(val, carryTerm, YEAR_BITS);
+      val = extra.value;
+      overflowed = overflowed || extra.overflow;
+      chains.A = chains.A.concat(extra.details);
     }
+    let yearVal = val;
+    let outOfRange = overflowed;
 
     lastChains = chains;
     lastResult = { A: yearVal, B: dayVal, C: hourVal, D: secR.value, overflow: outOfRange };
@@ -759,7 +780,7 @@
 
     // groups shown MSB-first, left to right: year, day(special), hour, sec
     const bitGroups = [
-      {field:'A', cls:'g-a', caption:'年 A (12bit・全加算器)'},
+      {field:'A', cls:'g-a', caption:'年 A (13bit・符号付き・全加算器)'},
       {field:'C', cls:'g-c', caption:'時 C (4bit・全加算器)'},
       {field:'D', cls:'g-d', caption:'秒 D (12bit・全加算器)'},
     ];
